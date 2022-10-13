@@ -1,3 +1,4 @@
+from __future__ import print_function
 '''
 EFT likelihood fit
 Brent R. Yates
@@ -270,45 +271,28 @@ class Poisson(Prod):
         return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
 
 
-if __name__ == '__main__':
-    print(Constant(1))
-    print(Constant(1)+Constant(2))
-    print(Constant(1)-Constant(2))
-    print(Constant(1)*Constant(2))
-    print(Constant(1)/Constant(2))
-    #print(Constant(1)/Constant(0))
-    c = Constant(1)/Constant(2)
-    print((Constant(1)/Constant(2)).eval())
-    x = Variable('x')
+def test_Constant():
+    c = Constant(2)
+    print('Testing', type(c).__name__)
+    print(c)
+    print((c*c + c).eval())
+
+def test_Poisson():
+    x = Poisson('x', 'k')
+    print('Testing', type(x).__name__)
     print(x)
-    print(Variable('x').eval(1))
-    print(x(2))
-    print(x+x)
-    print(x+x.eval(1))
-    print((x+x).eval(1))
-    print(x-x.eval(1))
-    print((x-x).eval(1))
-    p = Power('x', 2)
-    print(p+p)
-    print((p+p).eval(2))
-    print(x*x)
-    print(x*x.eval(1))
-    print(x/x.eval(1))
-    print((x*x)(2))
-    p = Polynomial('x', [2,1,1],  2)
-    print(p)
-    print p+x
-    print(Power('x', 0).simplify())
-    p = Power('x', 1).simplify()
-    print(p)
-    print(Expo(Variable('x')))
-    print(Factorial('k'))
-    t = Constant(-1) * Variable('x')
-    print(t)
-    print(t.eval(1))
-    pois = Poisson('x', 'k')
-    print(pois)
-    print(pois.eval(1,1))
-    print(pois.eval(1,2))
     assert Expo(Constant(-1) * Variable('x')).eval(1), np.exp(-1)
-    assert (pois.eval(1,2).value() - 1**2 * np.exp(-1) / np.math.factorial(2))<1e-5
+    assert (x.eval(1,2).value() - 1**2 * np.exp(-1) / np.math.factorial(2))<1e-18 # float has precision of 1e-18
+
+
+if __name__ == '__main__':
+    test_Constant()
+    test_Poisson()
+    '''
+    test_Variable()
+    test_Sum()
+    test_Prod()
+    test_Polynomial()
+    test_Exp()
+    test_Poisson()
+    '''
