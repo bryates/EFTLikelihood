@@ -63,6 +63,11 @@ class Constant():
         else:
             return self.value() == rhs.value()
 
+    def __lt__(self, rhs):
+        if not issubclass(type(rhs), Constant):
+            rhs = Constant(rhs)
+        return self.value() < rhs.value()
+
     def set_param(self, k=None):
         return self
 
@@ -125,7 +130,7 @@ class LogParameter(Parameter):
         return Constant(np.log(k))
 
     def eval(self, k):
-        return np.log(np.math.factorial(k))
+        return Constant(np.log(np.math.factorial(k)))
 
 
 class Factorial(Parameter):
@@ -141,8 +146,8 @@ class Factorial(Parameter):
 
 class Sum(Constant):
     def __init__(self, lhs, rhs):
-        self.lhs_ = lhs.simplify()
-        self.rhs_ = rhs.simplify()
+        self.lhs_ = lhs#.simplify()
+        self.rhs_ = rhs#.simplify()
 
     def value(self):
         return Sum(self.lhs_.value(), self.rhs_.value())
@@ -258,7 +263,7 @@ class Prod(Constant):
         if issubclass(type(self.lhs_.value()), int):
             return Constant(self.lhs_ * self.rhs_.eval(x))
         elif issubclass(type(self.rhs_.eval(x)), int):
-            return Constant(self.lhs_.eval(x) * self.lhs_)
+            return Constant(self.lhs_.eval(x) * self.rhs_)
         else:
             return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
 
@@ -408,6 +413,12 @@ class Polynomial(Constant):
     def ln(self):
         return LogPolynomial(self)
 
+    def derivative(self):
+        return self.val_.derivative()
+
+    def eval(self, x):
+        return self.val_.eval(x)
+
 
 class LogPolynomial(Polynomial):
     def __init__(self, var):
@@ -486,18 +497,9 @@ def test_Variable():
     print('  ' + str(x.derivative()))
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
-    print('NEW')
-    print(x+x)
-    print((x+x).ln())
-    print((x+x).derivative())
-    print('Diff')
-    print(x-x)
-    print((x-x).ln())
-    print((x-x).derivative())
-    print(Constant(2)*x-x)
-    print((Constant(2)*x-x).ln())
-    print((Constant(2)*x-x).derivative())
     assert ((Constant(2)*x-x).ln().eval(2) - np.log(2*2 - 2))<1e-18
+    assert ((Constant(2)*x-x).ln().eval(1) - np.log(2*1 -1))<1e-18
+    assert ((Constant(2)*x-x).ln().eval(2) - np.log(2*2 -1))<1e-18
 
 def test_Power():
     x = Power('x', 2).simplify()
@@ -513,6 +515,7 @@ def test_Power():
     print('   ', p+Power('x', 1))
     print('    derivative: ', end='')
     print('   ' + str(x.derivative()))
+    assert (x.eval(2) - 2**2)<1e-18
 
 def test_Polynomial():
     x = Polynomial('x', [2,1,1],  2)
@@ -523,6 +526,7 @@ def test_Polynomial():
     print('  ' + str(x.ln()))
     print('    derivative: ', end='')
     print('   ' + str(x.derivative()))
+    assert (x.eval(2) - (2**2 + 2**1 + 1))<1e-18
 
 def test_Poisson():
     x = Poisson('x', 'k')
@@ -544,9 +548,9 @@ def test_Poisson():
 if __name__ == '__main__':
     test_Constant()
     test_Variable()
-    '''
     test_Power()
     test_Polynomial()
+    '''
     test_Poisson()
     test_Variable()
     test_Sum()
