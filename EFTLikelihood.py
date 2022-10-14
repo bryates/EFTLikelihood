@@ -66,7 +66,8 @@ class Constant():
     def __lt__(self, rhs):
         if not issubclass(type(rhs), Constant):
             rhs = Constant(rhs)
-        return self.value() < rhs.value()
+        print(self.value(), rhs.value())
+        return np.abs(self.value()) < rhs.value()
 
     def set_param(self, k=None):
         return self
@@ -94,9 +95,9 @@ class Log(Constant):
 
     def eval(self, k=None):
         if not issubclass(type(self.value()), Constant):
-            return np.log(self.value())
+            return Constant(np.log(self.value()))
         else:
-            return np.log(self.value().eval(k).value())
+            return Constant(np.log(self.value().eval(k).value()))
 
 
 class Parameter(Constant):
@@ -225,8 +226,12 @@ class Diff(Constant):
 
 class Prod(Constant):
     def __init__(self, lhs, rhs):
-        self.lhs_ = lhs
-        self.rhs_ = rhs
+        if lhs.value() == 0 or rhs.value() == 0:
+            self.lhs_ = Constant(0)
+            self.rhs_ = Constant(0)
+        else:
+            self.lhs_ = lhs
+            self.rhs_ = rhs
 
     def value(self):
         if issubclass(type(self.lhs_.value()), int) and issubclass(type(self.rhs_.value()), int):
@@ -275,8 +280,14 @@ class Prod(Constant):
 
 class Quotient(Constant):
     def __init__(self, lhs, rhs):
-        self.lhs_ = lhs
-        self.rhs_ = rhs
+        if lhs.value() == 0:
+            self.lhs_ = Constant(0)
+            self.rhs_ = Constant(0)
+        elif rhs.value() == 0:
+            raise Exception('Trying to divide by 0!')
+        else:
+             self.lhs_ = lhs
+             self.rhs_ = rhs
 
     def value(self):
         if self.rhs_.value() == 0:
@@ -312,7 +323,11 @@ class Quotient(Constant):
         return Diff(self.lhs_.ln(), self.rhs_.ln())
 
     def derivative(self):
-        return self.lhs_.derivative() * self.rhs_ - self.lhs_ * self.rhs_.derivative()
+        # FIXME check for constant lhs/rhs
+        if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant:
+            return Quotient(self.lhs_.derivative(), self.rhs_)
+        else:
+            return Diff(Quotient(self.lhs_.derivative(), self.rhs_), Quotient(Prod(self.lhs_, self.rhs_.derivative()), self.rhs_))
 
     def eval(self, x=None):
         lhs = self.lhs_.value() if type(self.lhs_) != Constant else Constant(self.lhs_.value())
@@ -423,7 +438,7 @@ class Polynomial(Constant):
         return self.val_.derivative()
 
     def eval(self, x):
-        return self.val_.eval(x)
+        return Constant(self.val_.eval(x))
 
 
 class LogPolynomial(Polynomial):
@@ -447,6 +462,9 @@ class Expo(Constant):
 
     def ln(self):
         return self.val_
+
+    def derivative(self):
+        return Prod(self.val_.derivative(), self)
 
     def eval(self, x):
         return Constant(np.exp(self.val_.eval(x).value()))
@@ -478,6 +496,8 @@ class DerivativePoisson(Sum):
     def eval(self, x, k):
         lhs_ = self.lhs_.set_param(k)
         rhs_ = self.rhs_.set_param(k)
+        print(lhs_, rhs_)
+        print(lhs_.eval(x), rhs_.eval(x))
         return Constant(lhs_.eval(x) + rhs_.eval(x))
 
 
@@ -486,8 +506,8 @@ def test_Constant():
     print('Testing', type(c).__name__)
     print(c)
     print('2*2 + 2 =', (c*c + c).eval())
-    print(c.ln())
-    assert (c.ln().eval() - np.log(6))<1e-18
+    print((c*c + c).ln())
+    assert ((c*c + c).ln().eval() - np.log(6))<1e-18
 
 def test_Variable():
     x = Variable('x')
@@ -501,8 +521,8 @@ def test_Variable():
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
     assert ((Constant(2)*x-x).ln().eval(2) - np.log(2*2 - 2))<1e-18
-    assert ((Constant(2)*x-x).ln().eval(1) - np.log(2*1 -1))<1e-18
-    assert ((Constant(2)*x-x).ln().eval(2) - np.log(2*2 -1))<1e-18
+    assert ((Constant(2)*x-x).ln().eval(1) - np.log(2*1 - 1))<1e-18
+    assert ((Constant(2)*x-x).ln().eval(2) - np.log(2*2 - 2))<1e-18
 
 def test_Power():
     x = Power('x', 2).simplify()
@@ -531,6 +551,17 @@ def test_Polynomial():
     print('   ' + str(x.derivative()))
     assert (x.eval(2) - (2**2 + 2**1 + 1))<1e-18
 
+def test_Expo():
+    x = Expo(Prod(Constant(-1), Variable('x')))
+    print('Testing', type(x).__name__)
+    print('    function: ', end='')
+    print('   ' + str(x))
+    print('    ln: ', end='')
+    print('  ' + str(x.ln()))
+    print('    derivative: ', end='')
+    print('   ' + str(x.derivative()))
+    assert (x.eval(2) - (2**2 + 2**1 + 1))<1e-18
+
 def test_Poisson():
     x = Poisson('x', 'k')
     print('Testing', type(x).__name__)
@@ -543,11 +574,13 @@ def test_Poisson():
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
     print('here',x.eval(1,1))
+    print('here',x.eval(1,2))
+    print(x.eval(1,2).value())
     assert Expo(Constant(-1) * Variable('x')).eval(1), np.exp(-1)
-    assert (x.eval(1,2).value() - 1**2 * np.exp(-1) / np.math.factorial(2))<1e-18 # float has precision of 1e-18
-    print(x.derivative().eval(1,2).value(), 1) # float has precision of 1e-18
-    assert (x.derivative().eval(1,2).value() - 1)<1e-18 # float has precision of 1e-18
-    assert (x.derivative().eval(1,10).value() - 9)<1e-18 # float has precision of 1e-18
+    assert (x.eval(1,2).value() - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
+    print(x.derivative().eval(1,2).value(), ) # float has precision of 1e-18
+    assert (x.derivative().eval(1,2) - np.exp(-2))<1e-18 # float has precision of 1e-18
+    assert (x.derivative().eval(1,10) - 9)<1e-18 # float has precision of 1e-18
 
 
 if __name__ == '__main__':
@@ -555,13 +588,13 @@ if __name__ == '__main__':
     test_Variable()
     test_Power()
     test_Polynomial()
+    test_Expo()
     test_Poisson()
     '''
     test_Variable()
     test_Sum()
     test_Prod()
     test_Polynomial()
-    test_Exp()
     test_Poisson()
     q = Constant(1) / Variable('x')
     print(q)
