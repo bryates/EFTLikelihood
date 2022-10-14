@@ -26,12 +26,12 @@ class Constant():
         return str(self.value())
 
     def __add__(self, rhs):
-        if issubclass(type(rhs), int):
+        if not issubclass(type(rhs), Constant):
             rhs = Constant(rhs)
         return Sum(self, rhs).simplify()
 
     def __sub__(self, rhs):
-        if issubclass(type(rhs), int):
+        if not issubclass(type(rhs), Constant):
             rhs = Constant(rhs)
         return Diff(self, rhs).simplify()
 
@@ -189,7 +189,10 @@ class Diff(Constant):
         self.rhs_ = rhs
 
     def value(self):
-        return Diff(self.lhs_.value(), self.rhs_.value())
+        if not issubclass(type(self.rhs_), Constant):
+            return Diff(self.lhs_.value(), self.rhs_.value())
+        else:
+            return Diff(self.lhs_.value(), self.rhs_)
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' - ' + str(self.rhs_) + ')'
@@ -202,14 +205,16 @@ class Diff(Constant):
             return Constant(0)
         elif self.lhs_.value() == 0:
             return self.rhs_
-        elif self.rhs_.value() == 0:
+        elif issubclass(type(self.rhs_), Constant) and self.rhs_.value() == 0:
             return self.lhs_
         else:
             lhs = self.lhs_.simplify()
-            rhs = self.rhs_.simplify()
+            rhs = self.rhs_
+            if issubclass(type(rhs), Constant):
+                rhs = rhs.simplify()
             if type(lhs)==Constant and type(rhs)==Constant:
                 return Constant(lhs.value() - rhs.value())
-            return Diff(self.lhs_.simplify(), self.rhs_.simplify())
+            return Diff(lhs, rhs)
 
     def derivative(self):
         return Diff(self.lhs_.derivative(), self.rhs_.derivative())
@@ -278,7 +283,8 @@ class Quotient(Constant):
             raise Exception('Trying to divide by 0!')
         lhs = self.lhs_.value() if type(self.lhs_) != Constant else Constant(self.lhs_.value())
         rhs = self.rhs_.value() if type(self.rhs_) != Constant else Constant(self.rhs_.value())
-        return lhs / rhs
+        return Quotient(self.lhs_, self.rhs_)
+        #return lhs / rhs
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' / ' + str(self.rhs_) + ')'
@@ -311,7 +317,7 @@ class Quotient(Constant):
     def eval(self, x=None):
         lhs = self.lhs_.value() if type(self.lhs_) != Constant else Constant(self.lhs_.value())
         rhs = self.rhs_.value() if type(self.rhs_) != Constant else Constant(self.rhs_.value())
-        return Constant(lhs.eval(x) / rhs.eval(x))
+        return Constant(lhs.eval(x).value() / rhs.eval(x).value())
 
 
 class Variable(Constant):
@@ -461,10 +467,7 @@ class Poisson(Prod):
         var = Constant(-1) * Variable(k)
         lhs = Power(self.symbol_, Constant(k)).eval(x)
         rhs = Expo(var).eval(x) / Factorial(k).eval(k)
-        lhs = self.lhs_.value() if issubclass(type(self.lhs_), Constant) else Constant(self.lhs_)
-        rhs = self.rhs_.value() if issubclass(type(self.rhs_), Constant) else Constant(self.rhs_)
-        return Constant(lhs * rhs)
-        return Constant(lhs.value() * rhs.value())
+        return Constant(lhs.eval(x) * rhs.eval(x))
 
 class DerivativePoisson(Sum):
     def __init__(self, pois_d, k):
@@ -539,8 +542,10 @@ def test_Poisson():
     print('   ' + str(x.derivative()))
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
+    print('here',x.eval(1,1))
     assert Expo(Constant(-1) * Variable('x')).eval(1), np.exp(-1)
     assert (x.eval(1,2).value() - 1**2 * np.exp(-1) / np.math.factorial(2))<1e-18 # float has precision of 1e-18
+    print(x.derivative().eval(1,2).value(), 1) # float has precision of 1e-18
     assert (x.derivative().eval(1,2).value() - 1)<1e-18 # float has precision of 1e-18
     assert (x.derivative().eval(1,10).value() - 9)<1e-18 # float has precision of 1e-18
 
@@ -550,8 +555,8 @@ if __name__ == '__main__':
     test_Variable()
     test_Power()
     test_Polynomial()
-    '''
     test_Poisson()
+    '''
     test_Variable()
     test_Sum()
     test_Prod()
