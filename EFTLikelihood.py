@@ -201,13 +201,13 @@ class Sum(Constant):
         return Sum(self.lhs_.derivative(), self.rhs_.derivative())
 
     def eval(self, x=None):
-        return Constant(self.lhs_.eval(x) + self.rhs_.eval(x))
+        return Constant(self.lhs_.simplify().eval(x) + self.rhs_.simplify().eval(x))
 
 
 class Diff(Constant):
     def __init__(self, lhs, rhs):
-        self.lhs_ = lhs
-        self.rhs_ = rhs
+        self.lhs_ = lhs#.simplify()
+        self.rhs_ = rhs#.simplify()
 
     def value(self):
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
@@ -254,8 +254,8 @@ class Prod(Constant):
         #    self.lhs_ = Constant(0)
         #    self.rhs_ = Constant(0)
         #else:
-            self.lhs_ = lhs
-            self.rhs_ = rhs
+            self.lhs_ = lhs#.simplify()
+            self.rhs_ = rhs#.simplify()
 
     def value(self):
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
@@ -271,11 +271,13 @@ class Prod(Constant):
         return '(' + str(self.lhs_) + ' * ' + str(self.rhs_) + ')'
 
     def set_param(self, k):
-        return Prod(self.lhs_.set_param(k), self.rhs_.set_param(k))
+        return Prod(self.lhs_.set_param(k).simplify(), self.rhs_.set_param(k).simplify())
 
     def simplify(self):
-        if self.lhs_ == self.rhs_:
-            return Power(self.lhs_.symbol_, Constant(2))
+        if self.lhs_.value() == 0 or self.rhs_.value() == 0:
+            return Constant(0)
+        elif self.lhs_ == self.rhs_:
+            return Prod(self.lhs_.symbol_, Constant(2))
         elif self.lhs_ == 1:
             return self.rhs_
         elif self.rhs_ == 1:
@@ -302,6 +304,7 @@ class Prod(Constant):
         else:
             return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
         '''
+        return Constant(self.lhs_.simplify().eval(x) * self.rhs_.simplify().eval(x))
         return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
 
 
@@ -313,8 +316,8 @@ class Quotient(Constant):
         elif rhs.value() == 0:
             raise Exception('Trying to divide by 0!')
         else:
-             self.lhs_ = lhs
-             self.rhs_ = rhs
+             self.lhs_ = lhs#.simplify()
+             self.rhs_ = rhs#.simplify()
 
     def value(self):
         if self.rhs_.value() == 0:
@@ -355,7 +358,7 @@ class Quotient(Constant):
 
     def derivative(self):
         # FIXME check for constant lhs/rhs
-        if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant:
+        if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant or type(self.rhs_) == Parameter:
             return Quotient(self.lhs_.derivative(), self.rhs_)
         else:
             return Diff(Quotient(self.lhs_.derivative(), self.rhs_), Quotient(Prod(self.lhs_, self.rhs_.derivative()), self.rhs_))
@@ -364,7 +367,7 @@ class Quotient(Constant):
         if type(self.lhs_) == Constant:
             return Constant(self.lhs_ / self.rhs_.eval(x))
         elif type(self.rhs_) == Constant:
-            return Constant(self.lhs_.eval(x) / self.rhs_)
+            return Constant(self.lhs_.eval(x) / self.rhs_.value())
         else:
             return Constant(self.lhs_.eval(x) / self.rhs_.eval(x))
 
@@ -445,7 +448,7 @@ class Power(Variable):
             return self
 
     def set_param(self, k):
-        return LogVariable(self.val_.set_param(k))
+        return Power(self.val_.set_param(k))
 
     def ln(self):
         return self.val_ * Variable(self.symbol_).ln()
@@ -512,9 +515,9 @@ class Expo(Constant):
 class Poisson(Prod):
     def __init__(self, symbol='x', param=1):
         self.symbol_ = symbol
-        var = Constant(-1) * Variable(self.symbol_)
+        var = Prod(Constant(-1), Variable(self.symbol_))
         self.lhs_ = Power(symbol, Parameter(param))
-        self.rhs_ = Expo(var) / Factorial(param)
+        self.rhs_ = Quotient(Expo(var), Factorial(param))
         self.param_ = param
 
     def derivative(self):
@@ -631,12 +634,9 @@ def test_Poisson():
     print('   ' + str(x.derivative()))
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
-    print(x.eval(1,2))
-    assert Expo(Constant(-1) * Variable('x')).eval(1), np.exp(-1)
     assert (x.eval(1,2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    print(x.derivative().eval(1,2), ) # float has precision of 1e-18
-    assert (x.derivative().eval(1,2) - np.exp(-2))<1e-18 # float has precision of 1e-18
-    assert (x.derivative().eval(1,10) - 9)<1e-18 # float has precision of 1e-18
+    assert (x.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
+    assert (x.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
 
 
 if __name__ == '__main__':
