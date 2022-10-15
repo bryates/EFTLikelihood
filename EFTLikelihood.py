@@ -413,11 +413,13 @@ class LogVariable(Variable):
     def __str__(self):
         return 'ln(' + str(self.symbol_) + ')'
 
+    '''
     def set_param(self, k):
         return LogVariable(self.val_.set_param(k))
+    '''
 
     def derivative(self):
-        return Constant(1) / Variable(self.symbol_)
+        return Quotient(Constant(1), Variable(self.symbol_))
 
 
 class Power(Variable):
@@ -520,6 +522,9 @@ class Poisson(Prod):
         self.rhs_ = Quotient(Expo(var), Factorial(param))
         self.param_ = param
 
+    def ln(self):
+        return LogPoisson(Sum(self.lhs_.ln(), self.rhs_.ln()), self.param_)
+
     def derivative(self):
         return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(), self.param_)
 
@@ -528,6 +533,22 @@ class Poisson(Prod):
         lhs = Power(self.symbol_, Constant(k)).eval(x)
         rhs = Expo(var).eval(x) / Factorial(k).eval(k)
         return Constant(lhs * rhs)
+
+
+class LogPoisson(Sum):
+    def __init__(self, pois_l, k):
+        self.lhs_ = pois_l.lhs_
+        self.rhs_ = pois_l.rhs_
+        self.k_ = k
+
+    def derivative(self):
+        return DerivativePoisson(Sum(self.lhs_.derivative(), self.rhs_.derivative()), self.k_)
+
+    def eval(self, x, k):
+        lhs_ = self.lhs_.set_param(k)
+        rhs_ = self.rhs_.set_param(k)
+        return Constant(lhs_.eval(x) + rhs_.eval(x))
+
 
 class DerivativePoisson(Sum):
     def __init__(self, pois_d, k):
@@ -637,6 +658,7 @@ def test_Poisson():
     assert (x.eval(1,2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
     assert (x.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
     assert (x.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
+    assert (x.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
 
 
 if __name__ == '__main__':
@@ -646,14 +668,3 @@ if __name__ == '__main__':
     test_Polynomial()
     test_Expo()
     test_Poisson()
-    '''
-    test_Variable()
-    test_Sum()
-    test_Prod()
-    test_Polynomial()
-    test_Poisson()
-    q = Constant(1) / Variable('x')
-    print(q)
-    l = LogVariable('x')
-    print(l, l.derivative()*Constant(2))
-    '''
