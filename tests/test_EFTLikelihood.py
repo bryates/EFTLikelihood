@@ -1,7 +1,7 @@
 from EFTLikelihood.EFTLikelihood import *
 
 def test_Constant():
-    c = EFTLikelihood.Constant(2)
+    c = Constant(2)
     print('Testing', type(c).__name__)
     print(c)
     print('2*2 + 2 =', (c*c + c).eval())
