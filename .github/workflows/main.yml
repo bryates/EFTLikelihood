@@ -18,7 +18,7 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
       - name: lint
-        allow_failure: true
+        continue-on-error: true
         run: python3 -m pylint
       - name: Run tests with pytest  
         run: pytest
