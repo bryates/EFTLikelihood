@@ -97,3 +97,16 @@ def test_Poisson():
     assert (x.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
     assert (x.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
     assert (x.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
+
+def test_EFTPoisson():
+    x = EFTPoisson('x', [1, 1, 1], 'k')
+    print('Testing', type(x).__name__)
+    print('    function: ', end='')
+    print('   ' + str(x))
+    print('    ln: ', end='')
+    print('  ' + str(x.ln()))
+    print('    derivative: ', end='')
+    print('   ' + str(x.derivative()))
+    print('    f\'(ln(x)): ', end='')
+    print('  ' + str(x.ln().derivative()))
+    assert (x.eval(1,2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18

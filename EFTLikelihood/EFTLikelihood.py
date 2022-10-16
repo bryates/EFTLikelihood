@@ -411,7 +411,10 @@ class Power(Variable):
             self.val_ = Constant(power)
         else:
             self.val_ = power
-        self.symbol_ = symbol
+        if isinstance(symbol, Constant):
+            self.symbol_ = symbol
+        else:
+            self.symbol_ = Variable(symbol)
 
     def __eq__(self, rhs):
         if isinstance(rhs, Power) and self.val_ == rhs.val_:
@@ -436,13 +439,13 @@ class Power(Variable):
         return Power(self.val_.set_param(k))
 
     def ln(self):
-        return self.val_ * Variable(self.symbol_).ln()
+        return self.val_ * self.symbol_.ln()
 
     def derivative(self):
         return self.val_ * Power(self.symbol_, self.val_-1) # FIXME be carfule with x^1
 
     def eval(self, x):
-        return Constant(x**self.val_.eval(x).value())
+        return Constant(self.symbol_.eval(x).value()**self.val_.eval(x).value())
 
 
 class Polynomial(Constant):
@@ -500,9 +503,9 @@ class Expo(Constant):
 class Poisson(Prod):
     def __init__(self, symbol='x', param=1):
         self.symbol_ = symbol
-        var = Prod(Constant(-1), Variable(self.symbol_))
+        self.var_ = Prod(Constant(-1), Variable(self.symbol_))
         self.lhs_ = Power(symbol, Parameter(param))
-        self.rhs_ = Quotient(Expo(var), Factorial(param))
+        self.rhs_ = Quotient(Expo(self.var_), Factorial(param))
         self.param_ = param
 
     def ln(self):
@@ -543,6 +546,20 @@ class DerivativePoisson(Sum):
         lhs_ = self.lhs_.set_param(k)
         rhs_ = self.rhs_.set_param(k)
         return Constant(lhs_.eval(x) + rhs_.eval(x))
+
+
+class EFTPoisson(Poisson):
+    def __init__(self, symbol='x', consts=[1, 1, 1], param=1):
+        super().__init__(symbol, param)
+        self.var_ = Prod(Constant(-1), Polynomial(self.symbol_, consts, 2))
+        self.lhs_ = Power(Polynomial(self.symbol_), Parameter(param))
+        self.rhs_ = Quotient(Expo(self.var_), Factorial(param))
+
+    def eval(self, x, k):
+        var = self.var_.eval(x)
+        lhs = Power(Polynomial(self.symbol_), Constant(k)).eval(x)
+        rhs = Expo(var).eval(x) / Factorial(k).eval(k)
+        return Constant(lhs * rhs)
 
 
 def test_Constant():
@@ -643,6 +660,27 @@ def test_Poisson():
     assert (x.derivative().eval(1, 10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10)))) < 1e-18 # float has precision of 1e-18
     assert (x.ln().derivative().eval(2, 10) - (10/2-1)) < 1e-18 # float has precision of 1e-18
 
+def test_EFTPoisson():
+    x = EFTPoisson('x', [1, 1, 1], 'k')
+    print('Testing', type(x).__name__)
+    print('    function: ', end='')
+    print('   ' + str(x))
+    print('    ln: ', end='')
+    print('  ' + str(x.ln()))
+    print('    derivative: ', end='')
+    print('   ' + str(x.derivative()))
+    print('    f\'(ln(x)): ', end='')
+    print('  ' + str(x.ln().derivative()))
+    assert (x.eval(1,2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
+    '''
+    ln:   ((k * ln((((x^2) + x) + 1))) + ((-1 * (((x^2) + x) + 1)) - ln(k)))
+        derivative:    (((k * ((((x^2) + x) + 1)^(k - 1))) * (e^(-1 * (((x^2) + x) + 1)) / k!)) + (((((x^2) + x) + 1)^k) * ((((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) * e^(-1 * (((x^2) + x) + 1))) / k!)))
+        f'(ln(x)):   (((0 * ln((((x^2) + x) + 1))) + (k * (((2 * x) + 1) + 0))) + (((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) - 0))
+    '''
+    assert (x.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
+    assert (x.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
+    assert (x.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
+
 
 if __name__ == '__main__':
     test_Constant()
@@ -651,3 +689,4 @@ if __name__ == '__main__':
     test_Polynomial()
     test_Expo()
     test_Poisson()
+    test_EFTPoisson()
