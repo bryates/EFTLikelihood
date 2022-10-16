@@ -21,4 +21,4 @@ jobs:
         continue-on-error: true
         run: python3 -m pylint EFTLikelihood/*.py
       - name: Run tests with pytest  
-        run: pytest
+        run: pytest -rP
