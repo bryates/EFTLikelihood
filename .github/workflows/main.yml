@@ -19,6 +19,6 @@ jobs:
           pip install -e .
       - name: lint
         continue-on-error: true
-        run: python3 -m pylint
+        run: python3 -m pylint EFTLiklehood/*.py
       - name: Run tests with pytest  
         run: pytest
