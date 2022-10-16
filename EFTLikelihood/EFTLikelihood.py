@@ -168,7 +168,8 @@ class Sum(Constant):
             return Constant(self.lhs_.value() + self.rhs_.value())
         elif type(self.lhs_.value()) == Constant:
             return Sum(self.lhs_, self.rhs_.value())
-        elif type(self.rhs_.value()) == Constant:
+        #elif type(self.rhs_.value()) == Constant:
+        elif issubclass(type(self.rhs_), Constant):
             return Sum(self.lhs_.value(), self.rhs_)
         else:
             return Sum(self.lhs_.value(), self.rhs_.value())
@@ -479,8 +480,11 @@ class LogPolynomial(Polynomial):
     def __str__(self):
         return 'ln(' + str(self.val_) + ')'
 
+    def derivative(self):
+        return Quotient(self.val_.derivative(), self.val_)
+
     def eval(self, x):
-        return Constant(np.log(self.val_.eval(x)))
+        return Constant(np.log(self.val_.eval(x).value()))
 
 
 class Expo(Constant):
@@ -672,11 +676,6 @@ def test_EFTPoisson():
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
     assert (x.eval(1,2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    '''
-    ln:   ((k * ln((((x^2) + x) + 1))) + ((-1 * (((x^2) + x) + 1)) - ln(k)))
-        derivative:    (((k * ((((x^2) + x) + 1)^(k - 1))) * (e^(-1 * (((x^2) + x) + 1)) / k!)) + (((((x^2) + x) + 1)^k) * ((((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) * e^(-1 * (((x^2) + x) + 1))) / k!)))
-        f'(ln(x)):   (((0 * ln((((x^2) + x) + 1))) + (k * (((2 * x) + 1) + 0))) + (((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) - 0))
-    '''
     assert (x.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
     assert (x.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
     assert (x.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18

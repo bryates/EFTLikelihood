@@ -110,3 +110,11 @@ def test_EFTPoisson():
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(x.ln().derivative()))
     assert (x.eval(1,2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
+    '''
+    ln:   ((k * ln((((x^2) + x) + 1))) + ((-1 * (((x^2) + x) + 1)) - ln(k)))
+        derivative:    (((k * ((((x^2) + x) + 1)^(k - 1))) * (e^(-1 * (((x^2) + x) + 1)) / k!)) + (((((x^2) + x) + 1)^k) * ((((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) * e^(-1 * (((x^2) + x) + 1))) / k!)))
+    f'(ln(x)):   (((0 * ln((((x^2) + x) + 1))) + (k * ((((2 * x) + 1) + 0) / (((x^2) + x) + 1)))) + (((0 * (((x^2) + x) + 1)) + (-1 * (((2 * x) + 1) + 0))) - 0))
+    '''
+    assert (x.ln().eval(1,2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
+    print(x.ln().derivative().eval(1,2), (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))
+    assert (x.ln().derivative().eval(1,2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
