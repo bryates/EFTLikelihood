@@ -523,6 +523,7 @@ class Poisson(Prod):
         lhs = Power(self.symbol_, Constant(k)).eval(x)
         rhs = Expo(var).eval(x) / Factorial(k).eval(k)
         return Constant(lhs * rhs)
+            
 
 
 class LogPoisson(Sum):
@@ -538,6 +539,19 @@ class LogPoisson(Sum):
         lhs_ = self.lhs_.set_param(k)
         rhs_ = self.rhs_.set_param(k)
         return Constant(lhs_.eval(x) + rhs_.eval(x))
+
+    def minimize(self, x, k, iterations=100, epsilon=1e-18, rate=1e-1):
+        der = self.derivative()
+        grad = Constant(0)
+        minimum = Constant(x)
+        for istep in range(iterations):
+            print(istep)
+            grad = der.eval(minimum, k)
+            minimum = minimum + grad * rate
+            min_val = der.eval(minimum, k)
+            if (min_val - 0) < epsilon:
+                return minimum
+        return minimum
 
 
 class DerivativePoisson(Sum):
