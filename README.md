@@ -1,3 +1,5 @@
+[![CI](https://github.com/bryates/EFTLikelihood/actions/workflows/main.yml/badge.svg)](https://github.com/bryates/EFTLikelihood/actions/workflows/main.yml)
+
 EFT likelihood fit  
 Brent R. Yates  
 The Ohio State University  
