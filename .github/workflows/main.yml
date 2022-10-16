@@ -18,6 +18,6 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
       - name: lint
-        run: python3 -m pylint EFTLikelihood/*.py --threshold 6.5
+        run: python3 -m pylint EFTLikelihood/*.py --fail-under 6.5
       - name: Run tests with pytest
         run: pytest -rP
