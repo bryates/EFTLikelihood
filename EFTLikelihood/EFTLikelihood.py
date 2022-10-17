@@ -164,9 +164,9 @@ class Sum(Constant):
         self.rhs_ = rhs#.simplify()
 
     def value(self):
-        if type(self.lhs_.value()) == Constant and type(self.rhs_.value()) == Constant:
+        if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
             return Constant(self.lhs_.value() + self.rhs_.value())
-        elif type(self.lhs_.value()) == Constant:
+        elif type(self.lhs_) == Constant:
             return Sum(self.lhs_, self.rhs_.value())
         #elif type(self.rhs_.value()) == Constant:
         elif issubclass(type(self.rhs_), Constant):
@@ -290,7 +290,12 @@ class Prod(Constant):
         return Sum(self.lhs_.ln(), self.rhs_.ln())
 
     def derivative(self):
-        return Sum(Prod(self.lhs_.derivative(), self.rhs_), Prod(self.lhs_, self.rhs_.derivative()))
+        if type(self.lhs_) == Constant:
+            return Prod(self.lhs_, self.rhs_.derivative())
+        elif type(self.rhs_) == Constant:
+            return Prod(self.lhs_.derivative(), self.rhs_)
+        else:
+            return Sum(Prod(self.lhs_.derivative(), self.rhs_), Prod(self.lhs_, self.rhs_.derivative()))
 
     def eval(self, x=None):
         '''
@@ -443,7 +448,12 @@ class Power(Variable):
         return self.val_ * self.symbol_.ln()
 
     def derivative(self):
-        return self.val_ * Power(self.symbol_, self.val_-1) # FIXME be carfule with x^1
+        if self.val_.value() == 1:
+            return Variable(self.symbol_)
+        elif self.val_.value() == 0:
+            return Constant(0)
+        else:
+            return self.val_ * Power(self.symbol_, self.val_-1) # FIXME be carfule with x^1
 
     def eval(self, x):
         return Constant(self.symbol_.eval(x).value()**self.val_.eval(x).value())
@@ -453,10 +463,15 @@ class Polynomial(Constant):
     def __init__(self, symbol='x', const=[2, 1, 1], order=2):
         self.symbol_ = symbol
         if len(const) != order+1:
-            raise Exception('Please specify enough Constants!')
-        self.val_ = Power(symbol, order)
+            raise Exception('Please specify enough constants!')
+        #self.val_ = Prod(Constant(const[0]), Power(symbol, order))
+        #for i in range(1, order):
+        #    self.val_ = Sum(self.val_, Prod(Constant(const[i]), Power(symbol, order-i)))
+        #self.val_ = Sum(self.val_, Constant(const[-1]))
+        #self.val_ = self.val_.simplify()
+        self.val_ = Prod(Constant(const[0]), Power(symbol, order))
         for i in range(1, order+1):
-            self.val_ += Power(symbol, order-i)
+            self.val_ = Sum(self.val_, Prod(Constant(const[i]), Power(symbol, order-i)))
             self.val_.simplify()
 
     def __str__(self):
@@ -545,11 +560,11 @@ class LogPoisson(Sum):
         grad = Constant(0)
         minimum = Constant(x)
         for istep in range(iterations):
-            print(istep)
             grad = der.eval(minimum, k)
-            minimum = minimum + grad * rate
             min_val = der.eval(minimum, k)
-            if (min_val - 0) < epsilon:
+            print(istep, minimum, min_val, grad, grad*rate, minimum-grad*rate)
+            minimum = minimum + grad * rate
+            if abs(min_val.value()) < epsilon:
                 return minimum
         return minimum
 
@@ -569,14 +584,14 @@ class DerivativePoisson(Sum):
 class EFTPoisson(Poisson):
     def __init__(self, symbol='x', consts=[1, 1, 1], param=1):
         super().__init__(symbol, param)
-        self.var_ = Prod(Constant(-1), Polynomial(self.symbol_, consts, 2))
-        self.lhs_ = Power(Polynomial(self.symbol_), Parameter(param))
-        self.rhs_ = Quotient(Expo(self.var_), Factorial(param))
+        self.var_ = Polynomial(self.symbol_, const=consts, order=2)
+        self.lhs_ = Power(self.var_, Parameter(param))
+        self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
 
     def eval(self, x, k):
         var = self.var_.eval(x)
-        lhs = Power(Polynomial(self.symbol_), Constant(k)).eval(x)
-        rhs = Expo(var).eval(x) / Factorial(k).eval(k)
+        lhs = Power(var, Constant(k)).eval(x)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x) / Factorial(k).eval(k)
         return Constant(lhs * rhs)
 
 
