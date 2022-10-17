@@ -3,9 +3,11 @@ from eft_likelihood.eft_likelihood import *
 def test_Constant():
     const_test_test = Constant(2)
     print('Testing', type(const_test_test).__name__)
-    print(const_test_test)
-    print('2*2 + 2 =', (const_test_test*const_test_test + const_test_test).eval())
-    print((const_test_test*const_test_test + const_test_test).ln())
+    print('    const: ', end='')
+    print('   ' + str(const_test_test))
+    print('    2*2 + 2 =', (const_test_test*const_test_test + const_test_test).eval())
+    print('    ln: ', end='')
+    print('   ' + str((const_test_test*const_test_test + const_test_test).ln()))
     assert ((const_test_test*const_test_test + const_test_test).ln().eval() - np.log(6))<1e-18
     assert type(const_test_test+const_test_test)==Constant
     assert type(const_test_test-const_test_test)==Constant
