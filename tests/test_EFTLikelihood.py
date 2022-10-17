@@ -13,7 +13,7 @@ def test_Constant():
     assert type(const_test/const_test)==Constant
 
 def test_Variable():
-    var_test = Variable('var_test')
+    var_test = Variable('x')
     print('Testing', type(var_test).__name__)
     print('    function: ', end='')
     print('   ' + str(var_test))
@@ -30,9 +30,13 @@ def test_Variable():
     assert type(var_test.eval(1)-var_test.eval(1))==Constant
     assert type(var_test.eval(1)*var_test.eval(1))==Constant
     assert type(var_test.eval(1)/var_test.eval(1))==Constant
+    var_y = Variable('y')
+    assert var_test.derivative('y').value() == 0
+    assert var_y.derivative('x').value() == 0
+    assert var_y.derivative('y').value() == 1
 
 def test_Power():
-    Pow_test = Power('Pow_test', 2).simplify()
+    Pow_test = Power('x', 2).simplify()
     print('Testing', type(Pow_test).__name__)
     print('    function: ', end='')
     print(Pow_test)
@@ -40,9 +44,9 @@ def test_Power():
     print('   ' + str(Pow_test))
     print('    ln: ', end='')
     print('  ' + str(Pow_test.ln()))
-    other_Pow_test = Power('Pow_test', 2).simplify()
+    other_Pow_test = Power('x', 2).simplify()
     print('    f(Pow_test)+f(Pow_test):', end='')
-    print('   ', other_Pow_test+Power('Pow_test', 1))
+    print('   ', other_Pow_test+Power('x', 1))
     print('    derivative: ', end='')
     print('   ' + str(Pow_test.derivative()))
     assert (Pow_test.eval(2) - 2**2)<1e-18
@@ -69,7 +73,7 @@ def test_Polynomial():
     assert (Poly_test.derivative().eval(2) - (2 * 2 * 2**1 + 2))<1e-18
 
 def test_Expo():
-    Expo_test = Expo(Prod(Constant(-1), Variable('Expo_test')))
+    Expo_test = Expo(Prod(Constant(-1), Variable('x')))
     print('Testing', type(Expo_test).__name__)
     print('    function: ', end='')
     print('   ' + str(Expo_test))

@@ -89,11 +89,11 @@ class Constant():
         #return Constant(np.log(self.value()))
         return Log(self.value())
 
-    def derivative(self):
+    def derivative(self, var='x'):
         if issubclass(type(self), Constant) or issubclass(type(self.val_), Constant):
             return Constant(0)
         else:
-            return self.val_.derivative()
+            return self.val_.derivative(var)
 
     def eval(self, x=None):
         return self.simplify()
@@ -129,7 +129,7 @@ class Parameter(Constant):
     def ln(self):
         return LogParameter(self.param_)
 
-    def derivative(self):
+    def derivative(self, var='x'):
         return Constant(0)
 
 
@@ -198,8 +198,8 @@ class Sum(Constant):
                 return Constant(lhs.value() + rhs.value())
             return Sum(self.lhs_.simplify(), self.rhs_.simplify())
 
-    def derivative(self):
-        return Sum(self.lhs_.derivative(), self.rhs_.derivative())
+    def derivative(self, var='x'):
+        return Sum(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
     def eval(self, x=None):
         return Constant(self.lhs_.simplify().eval(x) + self.rhs_.simplify().eval(x))
@@ -242,8 +242,8 @@ class Diff(Constant):
                 return Constant(lhs.value() - rhs.value())
             return Diff(lhs, rhs)
 
-    def derivative(self):
-        return Diff(self.lhs_.derivative(), self.rhs_.derivative())
+    def derivative(self, var='x'):
+        return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
     def eval(self, x=None):
         return Constant(self.lhs_.eval(x) - self.rhs_.eval(x))
@@ -289,13 +289,13 @@ class Prod(Constant):
     def ln(self):
         return Sum(self.lhs_.ln(), self.rhs_.ln())
 
-    def derivative(self):
+    def derivative(self, var='x'):
         if type(self.lhs_) == Constant:
-            return Prod(self.lhs_, self.rhs_.derivative())
+            return Prod(self.lhs_, self.rhs_.derivative(var))
         elif type(self.rhs_) == Constant:
-            return Prod(self.lhs_.derivative(), self.rhs_)
+            return Prod(self.lhs_.derivative(var), self.rhs_)
         else:
-            return Sum(Prod(self.lhs_.derivative(), self.rhs_), Prod(self.lhs_, self.rhs_.derivative()))
+            return Sum(Prod(self.lhs_.derivative(var), self.rhs_), Prod(self.lhs_, self.rhs_.derivative(var)))
 
     def eval(self, x=None):
         '''
@@ -358,12 +358,12 @@ class Quotient(Constant):
     def ln(self):
         return Diff(self.lhs_.ln(), self.rhs_.ln())
 
-    def derivative(self):
+    def derivative(self, var='x'):
         # FIXME check for Constant lhs/rhs
         if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant or type(self.rhs_) == Parameter:
-            return Quotient(self.lhs_.derivative(), self.rhs_)
+            return Quotient(self.lhs_.derivative(var), self.rhs_)
         else:
-            return Diff(Quotient(self.lhs_.derivative(), self.rhs_), Quotient(Prod(self.lhs_, self.rhs_.derivative()), self.rhs_))
+            return Diff(Quotient(self.lhs_.derivative(var), self.rhs_), Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
 
     def eval(self, x=None):
         if type(self.lhs_) == Constant:
@@ -393,8 +393,11 @@ class Variable(Constant):
     def ln(self):
         return LogVariable(self.symbol_)
 
-    def derivative(self):
-        return Constant(1)
+    def derivative(self, var='x'):
+        if var == self.symbol_:
+            return Constant(1)
+        else:
+            return Constant(0)
 
     def eval(self, x):
         return Constant(x)
@@ -407,7 +410,7 @@ class LogVariable(Variable):
     def __str__(self):
         return 'ln(' + str(self.symbol_) + ')'
 
-    def derivative(self):
+    def derivative(self, var='x'):
         return Quotient(Constant(1), Variable(self.symbol_))
 
 
@@ -447,7 +450,7 @@ class Power(Variable):
     def ln(self):
         return self.val_ * self.symbol_.ln()
 
-    def derivative(self):
+    def derivative(self, var='x'):
         if self.val_.value() == 1:
             return Variable(self.symbol_)
         elif self.val_.value() == 0:
@@ -480,8 +483,8 @@ class Polynomial(Constant):
     def ln(self):
         return LogPolynomial(self)
 
-    def derivative(self):
-        return self.val_.derivative()
+    def derivative(self, var='x'):
+        return self.val_.derivative(var)
 
     def eval(self, x):
         return Constant(self.val_.eval(x))
@@ -495,8 +498,8 @@ class LogPolynomial(Polynomial):
     def __str__(self):
         return 'ln(' + str(self.val_) + ')'
 
-    def derivative(self):
-        return Quotient(self.val_.derivative(), self.val_)
+    def derivative(self, var='x'):
+        return Quotient(self.val_.derivative(var), self.val_)
 
     def eval(self, x):
         return Constant(np.log(self.val_.eval(x).value()))
@@ -512,8 +515,8 @@ class Expo(Constant):
     def ln(self):
         return self.val_
 
-    def derivative(self):
-        return Prod(self.val_.derivative(), self)
+    def derivative(self, var='x'):
+        return Prod(self.val_.derivative(var), self)
 
     def eval(self, x):
         return Constant(np.exp(self.val_.eval(x).value()))
@@ -530,8 +533,8 @@ class Poisson(Prod):
     def ln(self):
         return LogPoisson(Sum(self.lhs_.ln(), self.rhs_.ln()), self.param_)
 
-    def derivative(self):
-        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(), self.param_)
+    def derivative(self, var='x'):
+        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.param_)
 
     def eval(self, x, k):
         var = Constant(-1) * Variable(k)
@@ -547,8 +550,8 @@ class LogPoisson(Sum):
         self.rhs_ = Pois_l.rhs_
         self.k_ = k
 
-    def derivative(self):
-        return DerivativePoisson(Sum(self.lhs_.derivative(), self.rhs_.derivative()), self.k_)
+    def derivative(self, var='x'):
+        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.k_)
 
     def eval(self, x, k):
         lhs_ = self.lhs_.set_param(k)
@@ -556,7 +559,7 @@ class LogPoisson(Sum):
         return Constant(lhs_.eval(x) + rhs_.eval(x))
 
     def minimize(self, x, k, iterations=1000, epsilon=1e-8, rate=1e-1, T=None, debug=False):
-        der = self.derivative()
+        der = self.derivative(var)
         grad = Constant(0)
         minimum = Constant(x)
         in_rate = rate
