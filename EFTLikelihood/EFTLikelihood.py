@@ -555,17 +555,22 @@ class LogPoisson(Sum):
         rhs_ = self.rhs_.set_param(k)
         return Constant(lhs_.eval(x) + rhs_.eval(x))
 
-    def minimize(self, x, k, iterations=100, epsilon=1e-18, rate=1e-1):
+    def minimize(self, x, k, iterations=1000, epsilon=1e-8, rate=1e-1, T=None, debug=False):
         der = self.derivative()
         grad = Constant(0)
         minimum = Constant(x)
+        in_rate = rate
         for istep in range(iterations):
             grad = der.eval(minimum, k)
             min_val = der.eval(minimum, k)
-            print(istep, minimum, min_val, grad, grad*rate, minimum-grad*rate)
+            if debug: print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val, 'grad=', grad, 'grad*rate==', grad*rate, 'minimum-grad*rate==', minimum-grad*rate)
             minimum = minimum + grad * rate
             if abs(min_val.value()) < epsilon:
                 return minimum
+            if T is not None:
+                decay = np.exp(-1*istep/T) # cooling
+                rate = max(rate * decay, in_rate*.001)
+                if debug: print('rate after decay', rate, 'decay', decay)
         return minimum
 
 
