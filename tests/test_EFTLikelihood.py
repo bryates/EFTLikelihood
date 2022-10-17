@@ -69,8 +69,9 @@ def test_Polynomial():
     assert type(Poly_test.eval(1)-Poly_test.eval(1))==Constant
     assert type(Poly_test.eval(1)*Poly_test.eval(1))==Constant
     assert type(Poly_test.eval(1)/Poly_test.eval(1))==Constant
-    print(Poly_test.derivative())
-    assert (Poly_test.derivative().eval(2) - (2 * 2 * 2**1 + 2))<1e-18
+    print(Poly_test.derivative('x'))
+    assert (Poly_test.derivative().eval(2) - (2 * 2 * 2**1 + 1))<1e-18
+    assert Poly_test.derivative('y').eval(2).value() == 0
 
 def test_Expo():
     Expo_test = Expo(Prod(Constant(-1), Variable('x')))
@@ -105,7 +106,8 @@ def test_Poisson():
     assert (Pois_test.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
 
 def test_EFTPoisson():
-    eft_Pois_test = EFTPoisson('x', consts=[1, 1, 1], param='k')
+    poly_test = Polynomial('x', [1,1,1],  2)
+    eft_Pois_test = EFTPoisson(poly_test, param='k')
     print('Testing', type(eft_Pois_test).__name__)
     print('    function: ', end='')
     print('   ' + str(eft_Pois_test))
@@ -123,3 +125,4 @@ def test_EFTPoisson():
     '''
     assert (eft_Pois_test.ln().eval(1,2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
     assert (eft_Pois_test.ln().derivative().eval(1,2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
+    print('here', eft_Pois_test.derivative('y').eval(1,2))

@@ -452,11 +452,11 @@ class Power(Variable):
 
     def derivative(self, var='x'):
         if self.val_.value() == 1:
-            return Variable(self.symbol_)
+            return self.symbol_.derivative(var)
         elif self.val_.value() == 0:
             return Constant(0)
         else:
-            return self.val_ * Power(self.symbol_, self.val_-1) # FIXME be carfule with x^1
+            return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)), self.symbol_.derivative(var))
 
     def eval(self, x):
         return Constant(self.symbol_.eval(x).value()**self.val_.eval(x).value())
@@ -559,13 +559,13 @@ class LogPoisson(Sum):
         return Constant(lhs_.eval(x) + rhs_.eval(x))
 
     def minimize(self, x, k, iterations=1000, epsilon=1e-8, rate=1e-1, T=None, debug=False):
-        der = self.derivative(var)
+        derivative = self.derivative(var)
         grad = Constant(0)
         minimum = Constant(x)
         in_rate = rate
         for istep in range(iterations):
-            grad = der.eval(minimum, k)
-            min_val = der.eval(minimum, k)
+            grad = derivative.eval(minimum, k)
+            min_val = derivative.eval(minimum, k)
             if debug: print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val, 'grad=', grad, 'grad*rate==', grad*rate, 'minimum-grad*rate==', minimum-grad*rate)
             minimum = minimum + grad * rate
             if abs(min_val.value()) < epsilon:
@@ -590,9 +590,9 @@ class DerivativePoisson(Sum):
 
 
 class EFTPoisson(Poisson):
-    def __init__(self, symbol='x', consts=[1, 1, 1], param=1):
-        super().__init__(symbol, param)
-        self.var_ = Polynomial(self.symbol_, const=consts, order=2)
+    def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param=1):
+        self.param_ = param
+        self.var_ = poly
         self.lhs_ = Power(self.var_, Parameter(param))
         self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
 
