@@ -72,10 +72,9 @@ class Constant():
     def __eq__(self, rhs):
         if isinstance(type(self), Constant) and issubclass(type(rhs), int):
             return self.value() == rhs
-        elif not isinstance(type(rhs), type(self)):
+        if not isinstance(type(rhs), type(self)):
             return False
-        else:
-            return self.value() == rhs.value()
+        return self.value() == rhs.value()
 
     def __lt__(self, rhs):
         if not issubclass(type(rhs), Constant):
@@ -92,8 +91,7 @@ class Constant():
     def derivative(self, var='x'):
         if issubclass(type(self), Constant) or issubclass(type(self.val_), Constant):
             return Constant(0)
-        else:
-            return self.val_.derivative(var)
+        return self.val_.derivative(var)
 
     def eval(self, x_in=None):
         return self.simplify()
@@ -109,8 +107,7 @@ class Log(Constant):
     def eval(self, k_in=None):
         if not issubclass(type(self.value()), Constant):
             return Constant(np.log(self.value()))
-        else:
-            return Constant(np.log(self.value().eval(k_in).value()))
+        return Constant(np.log(self.value().eval(k_in).value()))
 
 
 class Parameter(Constant):
@@ -166,13 +163,11 @@ class Sum(Constant):
     def value(self):
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
             return Constant(self.lhs_.value() + self.rhs_.value())
-        elif type(self.lhs_) == Constant:
+        if type(self.lhs_) == Constant:
             return Sum(self.lhs_, self.rhs_.value())
-        #elif type(self.rhs_.value()) == Constant:
-        elif issubclass(type(self.rhs_), Constant):
+        if issubclass(type(self.rhs_), Constant):
             return Sum(self.lhs_.value(), self.rhs_)
-        else:
-            return Sum(self.lhs_.value(), self.rhs_.value())
+        return Sum(self.lhs_.value(), self.rhs_.value())
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' + ' + str(self.rhs_) + ')'
@@ -183,20 +178,19 @@ class Sum(Constant):
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Prod(Constant(2), self.lhs_)
-        elif type(self.lhs_.value()) == Constant:
+        if type(self.lhs_.value()) == Constant:
             return Sum(self.lhs_, self.rhs_.simplify())
-        elif type(self.rhs_.value()) == Constant:
+        if type(self.rhs_.value()) == Constant:
             return Sum(self.lhs_.simplify(), self.rhs_)
-        elif self.lhs_ is None or self.lhs_.value() == 0:
+        if self.lhs_ is None or self.lhs_.value() == 0:
             return self.rhs_
-        elif self.rhs_ is None or self.rhs_.value() == 0:
+        if self.rhs_ is None or self.rhs_.value() == 0:
             return self.lhs_
-        else:
-            lhs = self.lhs_.simplify()
-            rhs = self.rhs_.simplify()
-            if type(lhs) == Constant and type(rhs) == Constant:
-                return Constant(lhs.value() + rhs.value())
-            return Sum(self.lhs_.simplify(), self.rhs_.simplify())
+        lhs = self.lhs_.simplify()
+        rhs = self.rhs_.simplify()
+        if type(lhs) == Constant and type(rhs) == Constant:
+            return Constant(lhs.value() + rhs.value())
+        return Sum(self.lhs_.simplify(), self.rhs_.simplify())
 
     def derivative(self, var='x'):
         return Sum(self.lhs_.derivative(var), self.rhs_.derivative(var))
@@ -213,12 +207,11 @@ class Diff(Constant):
     def value(self):
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
             return Constant(self.lhs_ + self.rhs_)
-        elif type(self.lhs_) == Constant:
+        if type(self.lhs_) == Constant:
             return Diff(self.lhs_, self.rhs_)
-        elif type(self.rhs_.value()) == Constant:
+        if type(self.rhs_.value()) == Constant:
             return Diff(self.lhs_.value(), self.rhs_)
-        else:
-            return Diff(self.lhs_.value(), self.rhs_.value())
+        return Diff(self.lhs_.value(), self.rhs_.value())
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' - ' + str(self.rhs_) + ')'
@@ -229,18 +222,17 @@ class Diff(Constant):
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Constant(0)
-        elif self.lhs_.value() == 0:
+        if self.lhs_.value() == 0:
             return self.rhs_
-        elif issubclass(type(self.rhs_), Constant) and self.rhs_.value() == 0:
+        if issubclass(type(self.rhs_), Constant) and self.rhs_.value() == 0:
             return self.lhs_
-        else:
-            lhs = self.lhs_.simplify()
-            rhs = self.rhs_
-            if issubclass(type(rhs), Constant):
-                rhs = rhs.simplify()
-            if type(lhs) == Constant and type(rhs) == Constant:
-                return Constant(lhs.value() - rhs.value())
-            return Diff(lhs, rhs)
+        lhs = self.lhs_.simplify()
+        rhs = self.rhs_
+        if issubclass(type(rhs), Constant):
+            rhs = rhs.simplify()
+        if type(lhs) == Constant and type(rhs) == Constant:
+            return Constant(lhs.value() - rhs.value())
+        return Diff(lhs, rhs)
 
     def derivative(self, var='x'):
         return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
@@ -257,12 +249,11 @@ class Prod(Constant):
     def value(self):
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
             return Constant(self.lhs_.value() * self.rhs_.value())
-        elif type(self.lhs_) == Constant:
+        if type(self.lhs_) == Constant:
             return Prod(self.lhs_, self.rhs_.value())
-        elif type(self.rhs_) == Constant:
+        if type(self.rhs_) == Constant:
             return Prod(self.lhs_.value(), self.rhs_)
-        else:
-            return Prod(self.lhs_.value(), self.rhs_.value())
+        return Prod(self.lhs_.value(), self.rhs_.value())
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' * ' + str(self.rhs_) + ')'
@@ -273,18 +264,17 @@ class Prod(Constant):
     def simplify(self):
         if self.lhs_.value() == 0 or self.rhs_.value() == 0:
             return Constant(0)
-        elif self.lhs_ == self.rhs_:
+        if self.lhs_ == self.rhs_:
             return Prod(self.lhs_.symbol_, Constant(2))
-        elif self.lhs_ == 1:
+        if self.lhs_ == 1:
             return self.rhs_
-        elif self.rhs_ == 1:
+        if self.rhs_ == 1:
             return self.lhs_
-        else:
-            lhs = self.lhs_.simplify()
-            rhs = self.rhs_.simplify()
-            if type(lhs) == Constant and type(rhs) == Constant:
-                return Constant(lhs.value() * rhs.value())
-            return Prod(self.lhs_.simplify(), self.rhs_.simplify())
+        lhs = self.lhs_.simplify()
+        rhs = self.rhs_.simplify()
+        if type(lhs) == Constant and type(rhs) == Constant:
+            return Constant(lhs.value() * rhs.value())
+        return Prod(self.lhs_.simplify(), self.rhs_.simplify())
 
     def ln(self):
         return Sum(self.lhs_.ln(), self.rhs_.ln())
@@ -292,23 +282,13 @@ class Prod(Constant):
     def derivative(self, var='x'):
         if type(self.lhs_) == Constant:
             return Prod(self.lhs_, self.rhs_.derivative(var))
-        elif type(self.rhs_) == Constant:
+        if type(self.rhs_) == Constant:
             return Prod(self.lhs_.derivative(var), self.rhs_)
-        else:
-            return Sum(Prod(self.lhs_.derivative(var), self.rhs_),
-                       Prod(self.lhs_, self.rhs_.derivative(var)))
+        return Sum(Prod(self.lhs_.derivative(var), self.rhs_),
+                   Prod(self.lhs_, self.rhs_.derivative(var)))
 
     def eval(self, x_in=None):
-        '''
-        if type(self.lhs_) == Constant:
-            return Constant(self.lhs_ * self.rhs_.eval(x_in))
-        elif type(self.rhs_) == Constant:
-            return Constant(self.lhs_.eval(x_in) * self.rhs_)
-        else:
-            return Constant(self.lhs_.eval(x_in) * self.rhs_.eval(x_in))
-        '''
         return Constant(self.lhs_.simplify().eval(x_in) * self.rhs_.simplify().eval(x_in))
-        return Constant(self.lhs_.eval(x_in) * self.rhs_.eval(x_in))
 
 
 class Quotient(Constant):
@@ -327,12 +307,11 @@ class Quotient(Constant):
             raise Exception('Trying to divide by 0!')
         if type(self.lhs_) == Constant and type(self.rhs_) == Constant:
             return Constant(self.lhs_ / self.rhs_)
-        elif type(self.lhs_) == Constant:
+        if type(self.lhs_) == Constant:
             return Quotient(self.lhs_, self.rhs_.value())
-        elif type(self.rhs_) == Constant:
+        if type(self.rhs_) == Constant:
             return Quotient(self.lhs_.value(), self.rhs_)
-        else:
-            return Quotient(self.lhs_.value(), self.rhs_.value())
+        return Quotient(self.lhs_.value(), self.rhs_.value())
 
     def __str__(self):
         return '(' + str(self.lhs_) + ' / ' + str(self.rhs_) + ')'
@@ -343,18 +322,17 @@ class Quotient(Constant):
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Constant(1)
-        elif self.lhs_.value() == 1:
+        if self.lhs_.value() == 1:
             return Power(self.rhs_, Constant(-1))
             return Constant(1)/self.rhs_
-        elif self.rhs_.value() == 1:
+        if self.rhs_.value() == 1:
             return Power(self.lhs_, Constant(-1))
             return Constant(1)/self.lhs_
-        else:
-            lhs = self.lhs_.simplify()
-            rhs = self.rhs_.simplify()
-            if type(lhs) == Constant and type(rhs) == Constant:
-                return Constant(lhs.value() / rhs.value())
-            return Quotient(self.lhs_.simplify(), self.rhs_.simplify())
+        lhs = self.lhs_.simplify()
+        rhs = self.rhs_.simplify()
+        if type(lhs) == Constant and type(rhs) == Constant:
+            return Constant(lhs.value() / rhs.value())
+        return Quotient(self.lhs_.simplify(), self.rhs_.simplify())
 
     def ln(self):
         return Diff(self.lhs_.ln(), self.rhs_.ln())
@@ -362,17 +340,15 @@ class Quotient(Constant):
     def derivative(self, var='x'):
         if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant or type(self.rhs_) == Parameter:
             return Quotient(self.lhs_.derivative(var), self.rhs_)
-        else:
-            return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
-                       Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
+        return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
+                   Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
 
     def eval(self, x_in=None):
         if type(self.lhs_) == Constant:
             return Constant(self.lhs_ / self.rhs_.eval(x_in))
-        elif type(self.rhs_) == Constant:
+        if type(self.rhs_) == Constant:
             return Constant(self.lhs_.eval(x_in) / self.rhs_.value())
-        else:
-            return Constant(self.lhs_.eval(x_in) / self.rhs_.eval(x_in))
+        return Constant(self.lhs_.eval(x_in) / self.rhs_.eval(x_in))
 
 
 class Variable(Constant):
@@ -382,8 +358,7 @@ class Variable(Constant):
     def __eq__(self, rhs):
         if isinstance(rhs, Variable):
             return self.symbol_ == rhs.symbol_
-        else:
-            return False
+        return False
 
     def __str__(self):
         return str(self.symbol_)
@@ -397,8 +372,7 @@ class Variable(Constant):
     def derivative(self, var='x'):
         if var == self.symbol_:
             return Constant(1)
-        else:
-            return Constant(0)
+        return Constant(0)
 
     def eval(self, x_in):
         return Constant(x_in)
@@ -429,8 +403,7 @@ class Power(Variable):
     def __eq__(self, rhs):
         if isinstance(rhs, Power) and self.val_ == rhs.val_:
             return self.symbol_ == rhs.symbol_
-        else:
-            return False
+        return False
 
     def __str__(self):
         if self.val_.value() == -1:
@@ -440,10 +413,9 @@ class Power(Variable):
     def simplify(self):
         if self.val_.value() == 0:
             return Constant(1)
-        elif self.val_.value() == 1:
+        if self.val_.value() == 1:
             return Variable(self.symbol_)
-        else:
-            return self
+        return self
 
     def set_param(self, k_in):
         return Power(self.val_.set_param(k_in))
@@ -454,11 +426,10 @@ class Power(Variable):
     def derivative(self, var='x'):
         if self.val_.value() == 1:
             return self.symbol_.derivative(var)
-        elif self.val_.value() == 0:
+        if self.val_.value() == 0:
             return Constant(0)
-        else:
-            return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)),
-                       self.symbol_.derivative(var))
+        return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)),
+                   self.symbol_.derivative(var))
 
     def eval(self, x_in):
         return Constant(self.symbol_.eval(x_in).value()**self.val_.eval(x_in).value())
@@ -543,7 +514,6 @@ class Poisson(Prod):
         lhs = Power(self.symbol_, Constant(k_in)).eval(x_in)
         rhs = Expo(var).eval(x_in) / Factorial(k_in).eval(k_in)
         return Constant(lhs * rhs)
-            
 
 
 class LogPoisson(Sum):
@@ -553,14 +523,16 @@ class LogPoisson(Sum):
         self.param_k_ = k_in
 
     def derivative(self, var='x'):
-        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
+        return DerivativePoisson(Sum(self.lhs_.derivative(var),
+                   self.rhs_.derivative(var)), self.param_k_)
 
     def eval(self, x_in, k_in):
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
         return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
-    def minimize(self, var, x_in, k_in, iterations=1000, epsilon=1e-8, rate=1e-1, temperature=None, debug=False):
+    def minimize(self, var, x_in, k_in, iterations=1000, epsilon=1e-8, rate=1e-1,
+                    temperature=None, debug=False):
         derivative = self.derivative(var)
         grad = Constant(0)
         minimum = Constant(x_in)
