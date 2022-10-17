@@ -82,7 +82,7 @@ class Constant():
             rhs = Constant(rhs)
         return np.abs(self.value()) < rhs.value()
 
-    def set_param(self, k=None):
+    def set_param(self, k_in=None):
         return self
 
     def ln(self):
@@ -95,7 +95,7 @@ class Constant():
         else:
             return self.val_.derivative(var)
 
-    def eval(self, x=None):
+    def eval(self, x_in=None):
         return self.simplify()
 
 
@@ -106,11 +106,11 @@ class Log(Constant):
     def __str__(self):
         return 'ln(' + str(self.value()) + ')'
 
-    def eval(self, k=None):
+    def eval(self, k_in=None):
         if not issubclass(type(self.value()), Constant):
             return Constant(np.log(self.value()))
         else:
-            return Constant(np.log(self.value().eval(k).value()))
+            return Constant(np.log(self.value().eval(k_in).value()))
 
 
 class Parameter(Constant):
@@ -123,8 +123,8 @@ class Parameter(Constant):
     def __str__(self):
         return self.param_
 
-    def set_param(self, k):
-        return Constant(k)
+    def set_param(self, k_in):
+        return Constant(k_in)
 
     def ln(self):
         return LogParameter(self.param_)
@@ -140,22 +140,22 @@ class LogParameter(Parameter):
     def __str__(self):
         return 'ln(' + str(self.param_) + ')'
 
-    def set_param(self, k):
-        return Constant(np.log(k))
+    def set_param(self, k_in):
+        return Constant(np.log(k_in))
 
-    def eval(self, k):
-        return Constant(np.log(np.math.factorial(k)))
+    def eval(self, k_in):
+        return Constant(np.log(np.math.factorial(k_in)))
 
 
 class Factorial(Parameter):
     def __str__(self):
         return self.param_ + '!'
 
-    def set_param(self, k):
-        return Constant(np.math.factorial(k))
+    def set_param(self, k_in):
+        return Constant(np.math.factorial(k_in))
 
-    def eval(self, k):
-        return Constant(np.math.factorial(k))
+    def eval(self, k_in):
+        return Constant(np.math.factorial(k_in))
 
 
 class Sum(Constant):
@@ -177,8 +177,8 @@ class Sum(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' + ' + str(self.rhs_) + ')'
 
-    def set_param(self, k):
-        return Sum(self.lhs_.set_param(k), self.rhs_.set_param(k))
+    def set_param(self, k_in):
+        return Sum(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -201,8 +201,8 @@ class Sum(Constant):
     def derivative(self, var='x'):
         return Sum(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
-    def eval(self, x=None):
-        return Constant(self.lhs_.simplify().eval(x) + self.rhs_.simplify().eval(x))
+    def eval(self, x_in=None):
+        return Constant(self.lhs_.simplify().eval(x_in) + self.rhs_.simplify().eval(x_in))
 
 
 class Diff(Constant):
@@ -223,8 +223,8 @@ class Diff(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' - ' + str(self.rhs_) + ')'
 
-    def set_param(self, k):
-        return Diff(self.lhs_.set_param(k), self.rhs_.set_param(k))
+    def set_param(self, k_in):
+        return Diff(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -245,8 +245,8 @@ class Diff(Constant):
     def derivative(self, var='x'):
         return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
-    def eval(self, x=None):
-        return Constant(self.lhs_.eval(x) - self.rhs_.eval(x))
+    def eval(self, x_in=None):
+        return Constant(self.lhs_.eval(x_in) - self.rhs_.eval(x_in))
 
 
 class Prod(Constant):
@@ -267,8 +267,8 @@ class Prod(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' * ' + str(self.rhs_) + ')'
 
-    def set_param(self, k):
-        return Prod(self.lhs_.set_param(k).simplify(), self.rhs_.set_param(k).simplify())
+    def set_param(self, k_in):
+        return Prod(self.lhs_.set_param(k_in).simplify(), self.rhs_.set_param(k_in).simplify())
 
     def simplify(self):
         if self.lhs_.value() == 0 or self.rhs_.value() == 0:
@@ -295,19 +295,20 @@ class Prod(Constant):
         elif type(self.rhs_) == Constant:
             return Prod(self.lhs_.derivative(var), self.rhs_)
         else:
-            return Sum(Prod(self.lhs_.derivative(var), self.rhs_), Prod(self.lhs_, self.rhs_.derivative(var)))
+            return Sum(Prod(self.lhs_.derivative(var), self.rhs_),
+                       Prod(self.lhs_, self.rhs_.derivative(var)))
 
-    def eval(self, x=None):
+    def eval(self, x_in=None):
         '''
         if type(self.lhs_) == Constant:
-            return Constant(self.lhs_ * self.rhs_.eval(x))
+            return Constant(self.lhs_ * self.rhs_.eval(x_in))
         elif type(self.rhs_) == Constant:
-            return Constant(self.lhs_.eval(x) * self.rhs_)
+            return Constant(self.lhs_.eval(x_in) * self.rhs_)
         else:
-            return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
+            return Constant(self.lhs_.eval(x_in) * self.rhs_.eval(x_in))
         '''
-        return Constant(self.lhs_.simplify().eval(x) * self.rhs_.simplify().eval(x))
-        return Constant(self.lhs_.eval(x) * self.rhs_.eval(x))
+        return Constant(self.lhs_.simplify().eval(x_in) * self.rhs_.simplify().eval(x_in))
+        return Constant(self.lhs_.eval(x_in) * self.rhs_.eval(x_in))
 
 
 class Quotient(Constant):
@@ -336,8 +337,8 @@ class Quotient(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' / ' + str(self.rhs_) + ')'
 
-    def set_param(self, k):
-        return Quotient(self.lhs_.set_param(k), self.rhs_.set_param(k))
+    def set_param(self, k_in):
+        return Quotient(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -359,19 +360,19 @@ class Quotient(Constant):
         return Diff(self.lhs_.ln(), self.rhs_.ln())
 
     def derivative(self, var='x'):
-        # FIXME check for Constant lhs/rhs
         if isinstance(type(self.rhs_.value()), Constant) or type(self.rhs_.value()) == Constant or type(self.rhs_) == Parameter:
             return Quotient(self.lhs_.derivative(var), self.rhs_)
         else:
-            return Diff(Quotient(self.lhs_.derivative(var), self.rhs_), Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
+            return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
+                       Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
 
-    def eval(self, x=None):
+    def eval(self, x_in=None):
         if type(self.lhs_) == Constant:
-            return Constant(self.lhs_ / self.rhs_.eval(x))
+            return Constant(self.lhs_ / self.rhs_.eval(x_in))
         elif type(self.rhs_) == Constant:
-            return Constant(self.lhs_.eval(x) / self.rhs_.value())
+            return Constant(self.lhs_.eval(x_in) / self.rhs_.value())
         else:
-            return Constant(self.lhs_.eval(x) / self.rhs_.eval(x))
+            return Constant(self.lhs_.eval(x_in) / self.rhs_.eval(x_in))
 
 
 class Variable(Constant):
@@ -399,8 +400,8 @@ class Variable(Constant):
         else:
             return Constant(0)
 
-    def eval(self, x):
-        return Constant(x)
+    def eval(self, x_in):
+        return Constant(x_in)
 
 
 class LogVariable(Variable):
@@ -444,8 +445,8 @@ class Power(Variable):
         else:
             return self
 
-    def set_param(self, k):
-        return Power(self.val_.set_param(k))
+    def set_param(self, k_in):
+        return Power(self.val_.set_param(k_in))
 
     def ln(self):
         return self.val_ * self.symbol_.ln()
@@ -456,10 +457,11 @@ class Power(Variable):
         elif self.val_.value() == 0:
             return Constant(0)
         else:
-            return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)), self.symbol_.derivative(var))
+            return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)),
+                       self.symbol_.derivative(var))
 
-    def eval(self, x):
-        return Constant(self.symbol_.eval(x).value()**self.val_.eval(x).value())
+    def eval(self, x_in):
+        return Constant(self.symbol_.eval(x_in).value()**self.val_.eval(x_in).value())
 
 
 class Polynomial(Constant):
@@ -486,8 +488,8 @@ class Polynomial(Constant):
     def derivative(self, var='x'):
         return self.val_.derivative(var)
 
-    def eval(self, x):
-        return Constant(self.val_.eval(x))
+    def eval(self, x_in):
+        return Constant(self.val_.eval(x_in))
 
 
 class LogPolynomial(Polynomial):
@@ -501,8 +503,8 @@ class LogPolynomial(Polynomial):
     def derivative(self, var='x'):
         return Quotient(self.val_.derivative(var), self.val_)
 
-    def eval(self, x):
-        return Constant(np.log(self.val_.eval(x).value()))
+    def eval(self, x_in):
+        return Constant(np.log(self.val_.eval(x_in).value()))
 
 
 class Expo(Constant):
@@ -518,8 +520,8 @@ class Expo(Constant):
     def derivative(self, var='x'):
         return Prod(self.val_.derivative(var), self)
 
-    def eval(self, x):
-        return Constant(np.exp(self.val_.eval(x).value()))
+    def eval(self, x_in):
+        return Constant(np.exp(self.val_.eval(x_in).value()))
 
 
 class Poisson(Prod):
@@ -536,57 +538,60 @@ class Poisson(Prod):
     def derivative(self, var='x'):
         return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.param_)
 
-    def eval(self, x, k):
-        var = Constant(-1) * Variable(k)
-        lhs = Power(self.symbol_, Constant(k)).eval(x)
-        rhs = Expo(var).eval(x) / Factorial(k).eval(k)
+    def eval(self, x_in, k_in):
+        var = Constant(-1) * Variable(k_in)
+        lhs = Power(self.symbol_, Constant(k_in)).eval(x_in)
+        rhs = Expo(var).eval(x_in) / Factorial(k_in).eval(k_in)
         return Constant(lhs * rhs)
             
 
 
 class LogPoisson(Sum):
-    def __init__(self, Pois_l, k):
+    def __init__(self, Pois_l, k_in):
         self.lhs_ = Pois_l.lhs_
         self.rhs_ = Pois_l.rhs_
-        self.k_ = k
+        self.param_k_ = k_in
 
     def derivative(self, var='x'):
-        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.k_)
+        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
 
-    def eval(self, x, k):
-        lhs_ = self.lhs_.set_param(k)
-        rhs_ = self.rhs_.set_param(k)
-        return Constant(lhs_.eval(x) + rhs_.eval(x))
+    def eval(self, x_in, k_in):
+        lhs_ = self.lhs_.set_param(k_in)
+        rhs_ = self.rhs_.set_param(k_in)
+        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
-    def minimize(self, x, k, iterations=1000, epsilon=1e-8, rate=1e-1, T=None, debug=False):
+    def minimize(self, var, x_in, k_in, iterations=1000, epsilon=1e-8, rate=1e-1, temperature=None, debug=False):
         derivative = self.derivative(var)
         grad = Constant(0)
-        minimum = Constant(x)
+        minimum = Constant(x_in)
         in_rate = rate
         for istep in range(iterations):
-            grad = derivative.eval(minimum, k)
-            min_val = derivative.eval(minimum, k)
-            if debug: print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val, 'grad=', grad, 'grad*rate==', grad*rate, 'minimum-grad*rate==', minimum-grad*rate)
+            grad = derivative.eval(minimum, k_in)
+            min_val = derivative.eval(minimum, k_in)
+            if debug:
+                print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val,
+                    'grad=', grad, 'grad*rate==', grad*rate,
+                    'minimum-grad*rate==', minimum-grad*rate)
             minimum = minimum + grad * rate
             if abs(min_val.value()) < epsilon:
                 return minimum
-            if T is not None:
-                decay = np.exp(-1*istep/T) # cooling
+            if temperature is not None:
+                decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
                 if debug: print('rate after decay', rate, 'decay', decay)
         return minimum
 
 
 class DerivativePoisson(Sum):
-    def __init__(self, Pois_d, k):
+    def __init__(self, Pois_d, k_in):
         self.lhs_ = Pois_d.lhs_
         self.rhs_ = Pois_d.rhs_
-        self.k_ = k
+        self.param_k_ = k_in
 
-    def eval(self, x, k):
-        lhs_ = self.lhs_.set_param(k)
-        rhs_ = self.rhs_.set_param(k)
-        return Constant(lhs_.eval(x) + rhs_.eval(x))
+    def eval(self, x_in, k_in):
+        lhs_ = self.lhs_.set_param(k_in)
+        rhs_ = self.rhs_.set_param(k_in)
+        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
 
 class EFTPoisson(Poisson):
@@ -596,10 +601,10 @@ class EFTPoisson(Poisson):
         self.lhs_ = Power(self.var_, Parameter(param))
         self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
 
-    def eval(self, x, k):
-        var = self.var_.eval(x)
-        lhs = Power(var, Constant(k)).eval(x)
-        rhs = Expo(Prod(Constant(-1), var)).eval(x) / Factorial(k).eval(k)
+    def eval(self, x_in, k_in):
+        var = self.var_.eval(x_in)
+        lhs = Power(var, Constant(k_in)).eval(x_in)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x_in) / Factorial(k_in).eval(k_in)
         return Constant(lhs * rhs)
 
 
