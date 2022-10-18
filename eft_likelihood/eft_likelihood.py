@@ -532,7 +532,7 @@ class LogPoisson(Sum):
         return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
     def minimize(self, var, x_in, k_in, iterations=1000, epsilon=1e-8, rate=1e-1,
-                    temperature=None, debug=False):
+                    temperature=None, debug=False, doError=False):
         derivative = self.derivative(var)
         grad = Constant(0)
         minimum = Constant(x_in)
@@ -545,7 +545,32 @@ class LogPoisson(Sum):
                     'grad=', grad, 'grad*rate==', grad*rate,
                     'minimum-grad*rate==', minimum-grad*rate)
             minimum = minimum + grad * rate
-            if abs(min_val.value()) < epsilon:
+            if abs(min_val.value()) < epsilon and not doError:
+                return minimum
+            if temperature is not None:
+                decay = np.exp(-1*istep/temperature) # cooling
+                rate = max(rate * decay, in_rate*.001)
+                if debug: print('rate after decay', rate, 'decay', decay)
+        if not doError:
+            return minimum
+        return (minimum, self.error(var, minimum, k_in, iterations, epsilon, rate,
+            temperature, debug))
+
+    def error(self, var, true_min, k_in, iterations=1000, epsilon=1e-8, rate=1e-1,
+                    temperature=None, debug=False, doError=False):
+        grad = Constant(0)
+        target = self.eval(true_min, k_in) + .5
+        minimum = true_min + rate
+        in_rate = rate
+        for istep in range(iterations):
+            grad = target - self.eval(minimum, k_in)
+            min_val = self.eval(minimum, k_in)
+            if debug:
+                print('istep=', istep, 'minimum=', minimum, 'min_val=', target - min_val,
+                    'grad=', grad, 'grad*rate==', grad*rate,
+                    'minimum-grad*rate==', minimum-grad*rate)
+            minimum = minimum - grad * rate
+            if abs(min_val.value() - target.value()) < epsilon:
                 return minimum
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
