@@ -557,6 +557,43 @@ class LogPoisson(Sum):
         rhs_ = self.rhs_.set_param(k_in)
         return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
+
+class DerivativePoisson(Sum):
+    def __init__(self, Pois_d, k_in):
+        self.lhs_ = Pois_d.lhs_
+        self.rhs_ = Pois_d.rhs_
+        self.param_k_ = k_in
+
+    def derivative(self, var):
+        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
+
+    def eval(self, x_in, k_in):
+        lhs_ = self.lhs_.set_param(k_in)
+        rhs_ = self.rhs_.set_param(k_in)
+        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
+
+
+class EFTPoisson(Poisson):
+    def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param=1):
+        self.param_ = param
+        self.var_ = poly
+        self.lhs_ = Power(self.var_, Parameter(param))
+        self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
+
+    def eval(self, x_in, k_in):
+        var = self.var_.eval(x_in)
+        lhs = Power(var, Constant(k_in)).eval(x_in)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x_in) / Factorial(k_in).eval(k_in)
+        return Constant(lhs * rhs)
+
+
+class LogLikelohood:
+    def __init__(self, dist=Variable('x'), nuis=None):
+        if nuis is not None:
+            self.log_likelihood_ = Sum(dist.ln(), nuis.ln())
+        else:
+            self.log_likelihood_ = dist.ln()
+
     def minimize_nll(self, var, x_in, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
                     temperature=None, debug=False, doError=False, doHess=False):
 
@@ -566,7 +603,7 @@ class LogPoisson(Sum):
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1, answer WILL be wrong')
             return Constant(1/np.sqrt(-1 * hess.eval(minimum, data).value()))
 
-        derivative = self.derivative(var)
+        derivative = self.log_likelihood_.derivative(var)
         grad = Constant(0)
         minimum = Constant(x_in)
         in_rate = rate
@@ -599,12 +636,12 @@ class LogPoisson(Sum):
     def error(self, var, true_min, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
                     temperature=None, debug=False, doError=False):
         grad = Constant(1)
-        target = self.eval(true_min, k_in) - nll_sigma * 2
+        target = self.log_likelihood_.eval(true_min, k_in) - nll_sigma * 2
         minimum = true_min + np.sqrt(true_min.value()) * nll_sigma * 2 # Poisson guess
         in_rate = rate
         for istep in range(iterations):
-            grad = target - self.eval(minimum, k_in)
-            min_val = self.eval(minimum, k_in)
+            grad = target - self.log_likelihood_.eval(minimum, k_in)
+            min_val = self.log_likelihood_.eval(minimum, k_in)
             if debug:
                 print('min_val', min_val, 'target', target)
                 print('istep=', istep, 'minimum=', minimum, 'Delta min_val=', target - min_val,
@@ -621,35 +658,6 @@ class LogPoisson(Sum):
                 rate = max(rate * decay, in_rate*.001)
                 if debug: print('rate after decay', rate, 'decay', decay)
         return np.sqrt(minimum.value())
-
-
-class DerivativePoisson(Sum):
-    def __init__(self, Pois_d, k_in):
-        self.lhs_ = Pois_d.lhs_
-        self.rhs_ = Pois_d.rhs_
-        self.param_k_ = k_in
-
-    def derivative(self, var):
-        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
-
-    def eval(self, x_in, k_in):
-        lhs_ = self.lhs_.set_param(k_in)
-        rhs_ = self.rhs_.set_param(k_in)
-        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
-
-
-class EFTPoisson(Poisson):
-    def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param=1):
-        self.param_ = param
-        self.var_ = poly
-        self.lhs_ = Power(self.var_, Parameter(param))
-        self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
-
-    def eval(self, x_in, k_in):
-        var = self.var_.eval(x_in)
-        lhs = Power(var, Constant(k_in)).eval(x_in)
-        rhs = Expo(Prod(Constant(-1), var)).eval(x_in) / Factorial(k_in).eval(k_in)
-        return Constant(lhs * rhs)
 
 
 if __name__ == '__main__':
