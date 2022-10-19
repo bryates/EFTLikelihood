@@ -38,7 +38,7 @@ def test_Variable():
     assert var_y.derivative('y').value() == 1
 
 def test_Power():
-    pow_test_test = Power('x', 2).simplify()
+    pow_test_test = Power('x', 2)
     print('Testing', type(pow_test_test).__name__)
     print('    function: ', end='')
     print(pow_test_test)
@@ -46,7 +46,7 @@ def test_Power():
     print('   ' + str(pow_test_test))
     print('    ln: ', end='')
     print('  ' + str(pow_test_test.ln()))
-    other_pow_test_test = Power('x', 2).simplify()
+    other_pow_test_test = Power('x', 2)
     print('    f(pow_test_test)+f(pow_test_test):', end='')
     print('   ', other_pow_test_test+Power('x', 1))
     print('    derivative: ', end='')
@@ -103,7 +103,8 @@ def test_Poisson():
     print('    f\'(ln(pois_test_test)): ', end='')
     print('  ' + str(pois_test_test.ln().derivative()))
     assert (pois_test_test.eval(1,2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    assert (pois_test_test.derivative().eval(1,2) - np.exp(-1)/2)<1e-18 # float has precision of 1e-18
+    print(pois_test_test.derivative().eval(1,2), np.exp(-1)/2)
+    assert (pois_test_test.derivative().eval(1,2) - (np.exp(-1) - np.exp(-1)/2))<1e-18 # float has precision of 1e-18
     assert (pois_test_test.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
     assert (pois_test_test.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
 
@@ -127,3 +128,8 @@ def test_EFTPoisson():
     '''
     assert (eft_pois_test_test.ln().eval(1,2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
     assert (eft_pois_test_test.ln().derivative().eval(1,2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
+
+def test_Poisson_parts():
+    exp = Expo(Prod(Constant(-1), Variable('x')))
+    power = Power(Variable('x'), Parameter('k'))
+    print(DerivativePoisson(Quotient(Prod(exp, power), Factorial('k')).ln().derivative('x').derivative('x'), Parameter('k')).set_param(100))
