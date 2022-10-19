@@ -1,4 +1,5 @@
 [![CI](https://github.com/bryates/EFTLikelihood/actions/workflows/main.yml/badge.svg)](https://github.com/bryates/EFTLikelihood/actions/workflows/main.yml)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bryates/EFTLikelihood.git/HEAD?labpath=example.ipynb)
 
 EFT likelihood fit  
 Brent R. Yates  
