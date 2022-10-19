@@ -552,7 +552,7 @@ class LogPoisson(Sum):
         rhs_ = self.rhs_.set_param(k_in)
         return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
 
-    def minimize(self, var, x_in, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
+    def minimize_nll(self, var, x_in, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
                     temperature=None, debug=False, doError=False, doHess=False):
 
         def hessian(derivative, var, minimum, data):
@@ -596,7 +596,7 @@ class LogPoisson(Sum):
         grad = Constant(1)
         target = self.eval(true_min, k_in) - nll_sigma * 2
         print(self.derivative(var))
-        minimum = true_min# Poisson guess
+        minimum = true_min + np.sqrt(true_min.value()) * nll_sigma * 2 # Poisson guess
         in_rate = rate
         for istep in range(iterations):
             grad = target - self.eval(minimum, k_in)
