@@ -587,7 +587,7 @@ class EFTPoisson(Poisson):
         return Constant(lhs * rhs)
 
 
-class LogLikelohood:
+class LogLikelihood:
     def __init__(self, dist=Variable('x'), nuis=None):
         if nuis is not None:
             self.log_likelihood_ = Sum(dist.ln(), nuis.ln())
