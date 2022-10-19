@@ -14,15 +14,13 @@ class Constant():
             self.val_ = val.value()
         else:
             self.val_ = val
-        #self.simplify()
+        self.simplify()
 
     def value(self):
         return self.val_
 
-    '''
     def simplify(self):
         return self
-    '''
 
     def __str__(self):
         return str(self.value())
@@ -32,14 +30,14 @@ class Constant():
             rhs = Constant(rhs)
         if type(self) == Constant and type(rhs) == Constant:
             return Constant(self.value() + rhs.value())
-        return Sum(self, rhs)#.simplify()
+        return Sum(self, rhs).simplify()
 
     def __sub__(self, rhs):
         if not issubclass(type(rhs), Constant):
             rhs = Constant(rhs)
         if type(self) == Constant and type(rhs) == Constant:
             return Constant(self.value() - rhs.value())
-        return Diff(self, rhs)#.simplify()
+        return Diff(self, rhs).simplify()
 
     def __mul__(self, rhs):
         if not issubclass(type(rhs), Constant):
@@ -48,7 +46,7 @@ class Constant():
             return Constant(self.value() * rhs.value())
         if self.value() == 0 or rhs.value() == 0:
             return Constant(0)
-        return Prod(self, rhs)#.simplify()
+        return Prod(self, rhs).simplify()
 
     def __div__(self, rhs):
         if not issubclass(type(rhs), Constant):
@@ -57,7 +55,7 @@ class Constant():
             return Constant(self.value() / rhs.value())
         if self.value() == 0 or rhs.value() == 0:
             return Constant(0)
-        return Quotient(self, rhs)#.simplify()
+        return Quotient(self, rhs).simplify()
 
     def __truediv__(self, rhs):
         if not issubclass(type(rhs), Constant):
@@ -66,7 +64,7 @@ class Constant():
             return Constant(self.value() / rhs.value())
         if self.value() == 0 or rhs.value() == 0:
             return Constant(0)
-        return Quotient(self, rhs)#.simplify()
+        return Quotient(self, rhs).simplify()
 
     def __floordiv__(self, rhs):
         return Quotient(self, rhs)
@@ -87,7 +85,6 @@ class Constant():
         return self
 
     def ln(self):
-        #return Constant(np.log(self.value()))
         return Log(self.value())
 
     def derivative(self, var='x'):
@@ -96,7 +93,7 @@ class Constant():
         return self.val_.derivative(var)
 
     def eval(self, x_in=None):
-        return self#.simplify()
+        return self.simplify()
 
 
 class Log(Constant):
@@ -194,7 +191,6 @@ class Sum(Constant):
     def set_param(self, k_in):
         return Sum(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
-    '''
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Prod(Constant(2), self.lhs_)
@@ -211,14 +207,12 @@ class Sum(Constant):
         if type(lhs) == Constant and type(rhs) == Constant:
             return Constant(lhs.value() + rhs.value())
         return Sum(self.lhs_.simplify(), self.rhs_.simplify())
-    '''
 
     def derivative(self, var='x'):
         return Sum(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
     def eval(self, x_in=None):
-        return Constant(self.lhs_.eval(x_in) + self.rhs_.eval(x_in))
-        #return Constant(self.lhs_.simplify().eval(x_in) + self.rhs_.simplify().eval(x_in))
+        return Constant(self.lhs_.simplify().eval(x_in) + self.rhs_.simplify().eval(x_in))
 
 
 class Diff(Constant):
@@ -241,7 +235,6 @@ class Diff(Constant):
     def set_param(self, k_in):
         return Diff(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
-    '''
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Constant(0)
@@ -256,7 +249,6 @@ class Diff(Constant):
         if type(lhs) == Constant and type(rhs) == Constant:
             return Constant(lhs.value() - rhs.value())
         return Diff(lhs, rhs)
-    '''
 
     def derivative(self, var='x'):
         return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
@@ -283,10 +275,8 @@ class Prod(Constant):
         return '(' + str(self.lhs_) + ' * ' + str(self.rhs_) + ')'
 
     def set_param(self, k_in):
-        return Prod(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
-        #return Prod(self.lhs_.set_param(k_in).simplify(), self.rhs_.set_param(k_in).simplify())
+        return Prod(self.lhs_.set_param(k_in).simplify(), self.rhs_.set_param(k_in).simplify())
 
-    '''
     def simplify(self):
         if self.lhs_.value() == 0 or self.rhs_.value() == 0:
             return Constant(0)
@@ -301,7 +291,6 @@ class Prod(Constant):
         if type(lhs) == Constant and type(rhs) == Constant:
             return Constant(lhs.value() * rhs.value())
         return Prod(self.lhs_.simplify(), self.rhs_.simplify())
-    '''
 
     def ln(self):
         return Sum(self.lhs_.ln(), self.rhs_.ln())
@@ -315,8 +304,7 @@ class Prod(Constant):
                    Prod(self.lhs_, self.rhs_.derivative(var)))
 
     def eval(self, x_in=None):
-        return Constant(self.lhs_.eval(x_in) * self.rhs_.eval(x_in))
-        #return Constant(self.lhs_.simplify().eval(x_in) * self.rhs_.simplify().eval(x_in))
+        return Constant(self.lhs_.simplify().eval(x_in) * self.rhs_.simplify().eval(x_in))
 
 
 class Quotient(Constant):
@@ -347,7 +335,6 @@ class Quotient(Constant):
     def set_param(self, k_in):
         return Quotient(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
 
-    '''
     def simplify(self):
         if self.lhs_ == self.rhs_:
             return Constant(1)
@@ -362,7 +349,6 @@ class Quotient(Constant):
         if type(lhs) == Constant and type(rhs) == Constant:
             return Constant(lhs.value() / rhs.value())
         return Quotient(self.lhs_.simplify(), self.rhs_.simplify())
-    '''
 
     def ln(self):
         return Diff(self.lhs_.ln(), self.rhs_.ln())
@@ -443,14 +429,12 @@ class Power(Variable):
             return '(1 / ' + str(self.symbol_) + ')'
         return '(' + str(self.symbol_) + '^' + str(self.val_) + ')'
 
-    '''
     def simplify(self):
         if self.val_.value() == 0:
             return Constant(1)
         if self.val_.value() == 1:
             return Variable(self.symbol_)
         return self
-    '''
 
     def set_param(self, k_in):
         return Power(self.symbol_.set_param(k_in), self.val_.set_param(k_in))
@@ -485,7 +469,7 @@ class Polynomial(Constant):
         self.val_ = Prod(Constant(const[0]), Power(symbol, order))
         for i in range(1, order+1):
             self.val_ = Sum(self.val_, Prod(Constant(const[i]), Power(symbol, order-i)))
-            #self.val_.simplify()
+            #self.val_ = self.val_.simplify()
 
     def __str__(self):
         return str(self.val_)
