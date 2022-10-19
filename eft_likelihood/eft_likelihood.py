@@ -7,6 +7,7 @@ Oct. 8 2022
 '''
 
 import numpy as np
+import warnings
 
 class Constant():
     def __init__(self, val):
@@ -359,8 +360,9 @@ class Quotient(Constant):
         if type(self.rhs_) == Variable:
             return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
                        Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), Power(self.rhs_, Constant(2))))
+        #(f/g)' = f'/g - g'*f/g^2
         return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
-                   Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), self.rhs_))
+                   Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), Power(self.rhs_, 2)))
 
     def eval(self, x_in=None):
         if type(self.lhs_) == Constant:
@@ -438,6 +440,9 @@ class Power(Variable):
 
     def set_param(self, k_in):
         return Power(self.symbol_.set_param(k_in), self.val_.set_param(k_in))
+
+    def raise_power_by_one(self):
+        return Power(self.symbol_, self.val_+1)
 
     def ln(self):
         return self.val_ * self.symbol_.ln()
@@ -557,7 +562,9 @@ class LogPoisson(Sum):
 
         def hessian(derivative, var, minimum, data):
             hess = derivative.derivative(var) 
-            return np.sqrt(-1 * hess.eval(minimum, data).value())
+            if (nll_sigma - 0.5) > 1e-18:
+                warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1, answer WILL be wrong')
+            return Constant(1/np.sqrt(-1 * hess.eval(minimum, data).value()))
 
         derivative = self.derivative(var)
         grad = Constant(0)
