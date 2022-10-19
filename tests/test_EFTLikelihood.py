@@ -13,6 +13,8 @@ def test_Constant():
     assert type(const_test_test-const_test_test)==Constant
     assert type(const_test_test*const_test_test)==Constant
     assert type(const_test_test/const_test_test)==Constant
+    assert ((const_test_test*const_test_test + const_test_test).eval().value() - 6)<1e-18
+    assert ((const_test_test*const_test_test + const_test_test).ln().eval().value() - np.log(6))<1e-18
 
 def test_Variable():
     var_test_test = Variable('x')
@@ -103,7 +105,6 @@ def test_Poisson():
     print('    f\'(ln(pois_test_test)): ', end='')
     print('  ' + str(pois_test_test.ln().derivative()))
     assert (pois_test_test.eval(1,2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    print(pois_test_test.derivative().eval(1,2), np.exp(-1)/2)
     assert (pois_test_test.derivative().eval(1,2) - (np.exp(-1) - np.exp(-1)/2))<1e-18 # float has precision of 1e-18
     assert (pois_test_test.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
     assert (pois_test_test.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
@@ -128,8 +129,3 @@ def test_EFTPoisson():
     '''
     assert (eft_pois_test_test.ln().eval(1,2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
     assert (eft_pois_test_test.ln().derivative().eval(1,2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
-
-def test_Poisson_parts():
-    exp = Expo(Prod(Constant(-1), Variable('x')))
-    power = Power(Variable('x'), Parameter('k'))
-    print(DerivativePoisson(Quotient(Prod(exp, power), Factorial('k')).ln().derivative('x').derivative('x'), Parameter('k')).set_param(100))
