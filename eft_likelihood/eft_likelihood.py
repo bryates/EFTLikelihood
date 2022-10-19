@@ -557,8 +557,6 @@ class LogPoisson(Sum):
 
         def hessian(derivative, var, minimum, data):
             hess = derivative.derivative(var) 
-            print(hess)
-            print('hess', hess.eval(minimum, data).value())
             return np.sqrt(-1 * hess.eval(minimum, data).value())
 
         derivative = self.derivative(var)
@@ -595,7 +593,6 @@ class LogPoisson(Sum):
                     temperature=None, debug=False, doError=False):
         grad = Constant(1)
         target = self.eval(true_min, k_in) - nll_sigma * 2
-        print(self.derivative(var))
         minimum = true_min + np.sqrt(true_min.value()) * nll_sigma * 2 # Poisson guess
         in_rate = rate
         for istep in range(iterations):
@@ -610,15 +607,8 @@ class LogPoisson(Sum):
                     'minimum-grad*rate==', minimum-grad*rate)
                 print('diff', target.value() - min_val.value(), grad.value()-nll_sigma)
             if abs(target.value() - min_val.value()) < epsilon:
-            #if abs(target.value() - min_val.value() - nll_sigma) < epsilon or grad.value() < epsilon:
                 return np.sqrt(minimum.value())
-            #minimum = minimum + Constant(1)/grad# * rate# / true_min
-            print('direction', (min_val - target) / np.abs(target.value() - min_val.value()))
-            print('direction/grad', (min_val - target) / np.abs(target.value() - min_val.value()) / grad)
-            print('min + direction/grad', minimum + (min_val - target) / np.abs(target.value() - min_val.value()) / grad)
-            #minimum = minimum + (min_val - target) / np.abs(target.value() - min_val.value()) / grad
             minimum = minimum - grad
-            print('minimum is now', minimum)
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
