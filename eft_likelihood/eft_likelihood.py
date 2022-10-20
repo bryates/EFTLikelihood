@@ -688,7 +688,6 @@ class LogLikelohood:
 
         derivative = self.log_likelihood_.gradient(self.var_)
         d_nuis = self.nuis_.gradient(self.var_)
-        print(type(self.nuis_), type(d_nuis))
         grad = Constant(0)
         minimum = Constant(x_in)
         in_rate = rate
