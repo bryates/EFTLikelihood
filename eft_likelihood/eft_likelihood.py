@@ -346,7 +346,7 @@ class Prod(Constant):
 
 class Quotient(Constant):
     def __init__(self, lhs, rhs):
-        if lhs.value() == 0:
+        if type(lhs) == Constant and lhs.value() == 0:
             self.lhs_ = Constant(0)
             self.rhs_ = Constant(1)
         elif rhs.value() == 0:
