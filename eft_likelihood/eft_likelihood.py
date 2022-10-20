@@ -99,7 +99,7 @@ class Constant():
             grad = Sum(grad, self.derivative(v))
         return grad
 
-    def eval(self, x_in=None):
+    def eval(self, **kwargs):
         return self.simplify()
 
 
@@ -129,10 +129,12 @@ class Log(Constant):
     def __str__(self):
         return 'ln(' + str(self.value()) + ')'
 
-    def eval(self, k_in=None):
+    def eval(self, **kwargs):
         if not issubclass(type(self.value()), Constant):
             return Constant(np.log(self.value()))
-        return Constant(np.log(self.value().eval(k_in).value()))
+        if 'k_in' not in kwargs:
+            raise Exception(f'Please provide k_in!')
+        return Constant(np.log(self.value().eval(**kwargs).value()))
 
 
 class Parameter(Constant):
@@ -237,8 +239,8 @@ class Sum(Constant):
     def derivative(self, var='x'):
         return Sum(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
-    def eval(self, x_in=None):
-        return Constant(self.lhs_.simplify().eval(x_in) + self.rhs_.simplify().eval(x_in))
+    def eval(self, **kwargs):
+        return Constant(self.lhs_.simplify().eval(**kwargs) + self.rhs_.simplify().eval(**kwargs))
 
 
 class Diff(Constant):
@@ -279,8 +281,8 @@ class Diff(Constant):
     def derivative(self, var='x'):
         return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
-    def eval(self, x_in=None):
-        return Constant(self.lhs_.eval(x_in) - self.rhs_.eval(x_in))
+    def eval(self, **kwargs):
+        return Constant(self.lhs_.eval(**kwargs) - self.rhs_.eval(**kwargs))
 
 
 class Prod(Constant):
@@ -329,8 +331,8 @@ class Prod(Constant):
         return Sum(Prod(self.lhs_.derivative(var), self.rhs_),
                    Prod(self.lhs_, self.rhs_.derivative(var)))
 
-    def eval(self, x_in=None):
-        return Constant(self.lhs_.simplify().eval(x_in) * self.rhs_.simplify().eval(x_in))
+    def eval(self, **kwargs):
+        return Constant(self.lhs_.simplify().eval(**kwargs) * self.rhs_.simplify().eval(**kwargs))
 
 
 class Quotient(Constant):
@@ -389,12 +391,12 @@ class Quotient(Constant):
         return Diff(Quotient(self.lhs_.derivative(var), self.rhs_),
                    Quotient(Prod(self.lhs_, self.rhs_.derivative(var)), Power(self.rhs_, 2)))
 
-    def eval(self, x_in=None):
+    def eval(self, **kwargs):
         if type(self.lhs_) == Constant:
-            return Constant(self.lhs_ / self.rhs_.eval(x_in))
+            return Constant(self.lhs_ / self.rhs_.eval(**kwargs))
         if type(self.rhs_) == Constant:
-            return Constant(self.lhs_.eval(x_in) / self.rhs_.value())
-        return Constant(self.lhs_.eval(x_in) / self.rhs_.eval(x_in))
+            return Constant(self.lhs_.eval(**kwargs) / self.rhs_.value())
+        return Constant(self.lhs_.eval(**kwargs) / self.rhs_.eval(**kwargs))
 
 
 class Variable(Constant):
@@ -432,7 +434,9 @@ class LogVariable(Variable):
         return 'ln(' + str(self.symbol_) + ')'
 
     def derivative(self, var='x'):
-        return Quotient(Constant(1), Variable(self.symbol_))
+        if var == self.symbol_:
+            return Quotient(Constant(1), Variable(self.symbol_))
+        return Constant(0)
 
 
 class Power(Variable):
@@ -480,10 +484,10 @@ class Power(Variable):
         return Prod(Prod(self.val_, Power(self.symbol_, self.val_-1)),
                    self.symbol_.derivative(var))
 
-    def eval(self, x_in):
-        if self.symbol_.eval(x_in).value() == 0:
+    def eval(self, **kwargs):
+        if self.symbol_.eval(**kwargs).value() == 0:
             return Constant(0)
-        return Constant(self.symbol_.eval(x_in).value()**self.val_.eval(x_in).value())
+        return Constant(self.symbol_.eval(**kwargs).value()**self.val_.eval(**kwargs).value())
 
 
 class Polynomial(Constant):
@@ -510,8 +514,8 @@ class Polynomial(Constant):
     def derivative(self, var='x'):
         return self.val_.derivative(var)
 
-    def eval(self, x_in):
-        return Constant(self.val_.eval(x_in))
+    def eval(self, **kwargs):
+        return Constant(self.val_.eval(**kwargs))
 
 
 class LogPolynomial(Polynomial):
@@ -525,8 +529,8 @@ class LogPolynomial(Polynomial):
     def derivative(self, var='x'):
         return Quotient(self.val_.derivative(var), self.val_)
 
-    def eval(self, x_in):
-        return Constant(np.log(self.val_.eval(x_in).value()))
+    def eval(self, **kwargs):
+        return Constant(np.log(self.val_.eval(**kwargs).value()))
 
 
 class Expo(Constant):
@@ -542,8 +546,8 @@ class Expo(Constant):
     def derivative(self, var='x'):
         return Prod(self.val_.derivative(var), self)
 
-    def eval(self, x_in):
-        return Constant(np.exp(self.val_.eval(x_in).value()))
+    def eval(self, **kwargs):
+        return Constant(np.exp(self.val_.eval(**kwargs).value()))
 
 
 class Poisson(Prod):
@@ -555,41 +559,55 @@ class Poisson(Prod):
         self.param_ = param
 
     def ln(self):
-        return LogPoisson(Sum(self.lhs_.ln(), self.rhs_.ln()), self.param_)
+        return LogPoisson(Sum(self.lhs_.ln(), self.rhs_.ln()), self.symbol_, self.param_)
 
     def derivative(self, var='x'):
-        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.param_)
-    def eval(self, x_in, k_in):
-        var = Constant(-1) * Variable(k_in)
-        lhs = Power(self.symbol_, Constant(k_in)).eval(x_in)
-        rhs = Expo(var).eval(x_in) / Factorial(k_in).eval(k_in)
+        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.symbol_, self.param_)
+
+    def eval(self, **kwargs):
+        if self.symbol_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        var = Constant(-1) * Variable(self.var_)
+        if self.param_ not in kwargs:
+            raise Exception(f'Please provide {self.param_}!')
+        k_in = kwargs[self.param_ + '_in']
+        lhs = Power(self.symbol_, Constant(k_in)).eval(**kwargs)
+        rhs = Expo(var).eval(**kwargs) / Factorial(k_in).eval(k_in)
         return Constant(lhs * rhs)
 
 
 class LogPoisson(Sum):
-    def __init__(self, Pois_l, k_in):
+    def __init__(self, Pois_l, symbol, k_in):
+        self.symbol_ = symbol
         self.lhs_ = Pois_l.lhs_
         self.rhs_ = Pois_l.rhs_
         self.param_k_ = k_in
 
     def derivative(self, var='x'):
         return DerivativePoisson(Sum(self.lhs_.derivative(var),
-                   self.rhs_.derivative(var)), self.param_k_)
+                   self.rhs_.derivative(var)), self.symbol_, self.param_k_)
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
         for v in var[1:]:
-            grad = LogPoisson(Sum(grad, self.derivative(v)), self.param_k_)
+            grad = LogPoisson(Sum(grad, self.derivative(v)), self.symbol_, self.param_k_)
         return grad
 
-    def eval(self, x_in, k_in):
+    def eval(self, **kwargs):
+        if self.symbol_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        x_in = kwargs['x_in']
+        if self.param_k_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.param_k_}!')
+        k_in = kwargs[self.param_k_ + '_in']
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
-        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
+        return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
 class DerivativePoisson(Sum):
-    def __init__(self, Pois_d, k_in):
+    def __init__(self, Pois_d, symbol, k_in):
+        self.symbol_ = symbol
         self.lhs_ = Pois_d.lhs_
         self.rhs_ = Pois_d.rhs_
         self.param_k_ = k_in
@@ -597,7 +615,13 @@ class DerivativePoisson(Sum):
     def derivative(self, var):
         return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
 
-    def eval(self, x_in, k_in):
+    def eval(self, **kwargs):
+        if self.symbol_ not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        x_in = kwargs[self.symbol_]
+        if self.param_ not in kwargs:
+            raise Exception(f'Please provide {self.param_}!')
+        k_in = kwargs[self.param_]
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
         return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
@@ -605,12 +629,19 @@ class DerivativePoisson(Sum):
 
 class EFTPoisson(Poisson):
     def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param=1):
+        self.symbol_ = poly.symbol_
         self.param_ = param
         self.var_ = poly
         self.lhs_ = Power(self.var_, Parameter(param))
         self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
 
-    def eval(self, x_in, k_in):
+    def eval(self, **kwargs):
+        if self.symbol_ not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        x_in = kwargs[self.symbol_]
+        if self.param_ not in kwargs:
+            raise Exception(f'Please provide {self.param_}!')
+        k_in = kwargs[self.param_]
         var = self.var_.eval(x_in)
         lhs = Power(var, Constant(k_in)).eval(x_in)
         rhs = Expo(Prod(Constant(-1), var)).eval(x_in) / Factorial(k_in).eval(k_in)
@@ -627,22 +658,25 @@ class LogLikelohood:
             var = [var]
         self.var_ = var
 
-    def minimize_nll(self, var, x_in, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
-                    temperature=None, debug=False, doError=False, doHess=False):
+    def minimize_nll(self, var='x', x_in=1, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
+                    temperature=None, debug=False, doError=False, doHess=False, **kwargs):
 
-        def hessian(derivative, var, minimum, data):
+        def hessian(derivative, var, minimum, **data):
             hess = derivative.gradient(self, self.var_)#derivative(var) 
             if (nll_sigma - 0.5) > 1e-18:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1, answer WILL be wrong')
-            return Constant(1/np.sqrt(-1 * hess.eval(minimum, data).value()))
+            return Constant(1/np.sqrt(-1 * hess.eval(minimum, **data).value()))
 
         derivative = self.log_likelihood_.gradient(self.var_)#derivative(var)
         grad = Constant(0)
         minimum = Constant(x_in)
         in_rate = rate
         for istep in range(iterations):
-            grad = derivative.eval(minimum, k_in)
-            min_val = derivative.eval(minimum, k_in)
+            tmp_kwargs = kwargs.copy()
+            tmp_kwargs['x_in'] = minimum
+            tmp_kwargs['symbol'] = var
+            grad = derivative.eval(**tmp_kwargs)
+            min_val = derivative.eval(**tmp_kwargs)
             minimum = minimum + grad * rate
             if debug:
                 print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val,
@@ -652,9 +686,9 @@ class LogLikelohood:
                 if not doError:
                     return minimum
                 if doHess:
-                    return (minimum, hessian(derivative, var, minimum, k_in))
-                return (minimum, self.error(var, minimum, k_in, nll_sigma, iterations, epsilon, rate,
-                    temperature, debug))
+                    return (minimum, hessian(derivative, var, minimum, **kwargs))
+                return (minimum, self.error(var, minimum, nll_sigma, iterations, epsilon, rate,
+                    temperature, debug, **kwargs))
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
@@ -662,19 +696,31 @@ class LogLikelohood:
         if not doError:
             return minimum
         if doHess:
-            return (minimum, hessian(derivative, var, minimum, k_in))
-        return (minimum, self.error(var, minimum, k_in, nll_sigma, iterations, epsilon, rate,
-            temperature, debug))
+            return (minimum, hessian(derivative, var, minimum, **kwargs))
+        return (minimum, self.error(var, minimum, nll_sigma, iterations, epsilon, rate,
+            temperature, debug, **kwargs))
 
-    def error(self, var, true_min, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
-                    temperature=None, debug=False, doError=False):
+    def error(self, var='x', true_min=1, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
+                    temperature=None, debug=False, doError=False, **kwargs):
+        #var = kwargs['var']
+        #true_min = kwargs['true_min']
+        #nll_sigma = kwargs['nll_sigma']
+        #iterations=1000
+        #epsilon = kwargs['epsilon']
+        #rate = kwargs['rate']
+        #temperature = kwargs['temperature']
+        #debug = kwargs['debug']
+        #doError = kwargs['doError']
+
         grad = Constant(1)
-        target = self.log_likelihood_.eval(true_min, k_in) - nll_sigma * 2
+        tmp_kwargs = kwargs.copy()
+        tmp_kwargs['x_in'] = true_min
+        target = self.log_likelihood_.eval(**tmp_kwargs) - nll_sigma * 2
         minimum = true_min + np.sqrt(true_min.value()) * nll_sigma * 2 # Poisson guess
         in_rate = rate
         for istep in range(iterations):
-            grad = target - self.log_likelihood_.eval(minimum, k_in)
-            min_val = self.log_likelihood_.eval(minimum, k_in)
+            grad = target - self.log_likelihood_.eval(**tmp_kwargs)
+            min_val = self.log_likelihood_.eval(**tmp_kwargs)
             if debug:
                 print('min_val', min_val, 'target', target)
                 print('istep=', istep, 'minimum=', minimum, 'Delta min_val=', target - min_val,
@@ -686,6 +732,7 @@ class LogLikelohood:
             if abs(target.value() - min_val.value()) < epsilon:
                 return np.sqrt(minimum.value())
             minimum = minimum - grad
+            tmp_kwargs['x_in'] = minimum
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
@@ -695,22 +742,48 @@ class LogLikelohood:
 
 class LogNormal(Constant):
     def __init__(self, var='x', mu='u', sigma='s'):
-        pow_var = Power(Diff(LogVariable(var), Variable(mu)), Constant(2))
-        self.var_ = Quotient(
+        self.var_ = LogVariable(var)
+        self.mu_ = Variable(mu)
+        self.sigma_ = Variable(sigma)
+        pow_var = Power(Diff(self.var_, self.mu_), Constant(2))
+        self.log_normal_ = Quotient(
                         Expo(Quotient(Prod(Constant(-1), pow_var),
-                            Prod(Constant(2), Power(Variable(sigma),
+                            Prod(Constant(2), Power(self.sigma_,
                                 Constant(2))))),
-                        Prod(Prod(Variable(var), Variable(sigma)),
+                        Prod(Prod(self.var_, self.sigma_),
                             Power(Prod(Constant(2), Pi()), Constant(1/2))))
 
     def __str__(self):
-        return str(self.var_)
+        print(str(self.var_.derivative('s')), str(self.mu_.derivative('s')), str(self.sigma_.derivative('s')))
+        return str(self.log_normal_)
 
     def ln(self):
-        return self.var_.ln()
+        print('LogNormal ln', type(self.log_normal_.ln()))
+        return LogLogNormal(self.log_normal_.ln(), self.var_, self.mu_, self.sigma_)
 
     def derivative(self, var='x'):
-        return self.var_.derivative(var)
+        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_, self.mu_, self.sigma_)
+
+    def eval(self, x_in, mu_in, sigma_in):
+        num  = np.power(np.log(x_in) - mu_in, 2)
+        den  = 2*np.power(sigma_in, 2)
+        exp  = np.exp(- num / den)
+        norm = 1. / (x_in * sigma_in * np.sqrt(2 * np.math.pi))
+
+
+class LogLogNormal(LogNormal):
+    def __init__(self, log_norm, var, mu, sigma):
+        #self.var_ = log_norm.var_
+        #self.mu_ = log_norm.mu_
+        #self.sigma_ = log_norm.sigma_
+        super().__init__(var, mu, sigma)
+        self.log_normal_ = log_norm
+
+
+class DerivativeLogNormal(LogNormal):
+    def __init__(self, log_norm, var, mu, sigma):
+        super().__init__(var, mu, sigma)
+        self.log_normal_ = log_norm
 
 
 if __name__ == '__main__':
