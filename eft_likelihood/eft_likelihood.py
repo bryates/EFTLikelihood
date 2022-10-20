@@ -6,8 +6,8 @@ Department of Physics
 Oct. 8 2022
 '''
 
-import numpy as np
 import warnings
+import numpy as np
 
 class Constant():
     def __init__(self, val):
@@ -696,7 +696,8 @@ class LogLikelohood:
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
-                if debug: print('rate after decay', rate, 'decay', decay)
+                if debug:
+                    print('rate after decay', rate, 'decay', decay)
         if not doError:
             return minimum
         if doHess:
@@ -740,12 +741,14 @@ class LogLikelohood:
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
-                if debug: print('rate after decay', rate, 'decay', decay)
+                if debug:
+                    print('rate after decay', rate, 'decay', decay)
         return np.sqrt(minimum.value())
 
 
 class LogNormal(Constant):
     def __init__(self, var='x', mu='u', sigma='s'):
+        self.symbol_ = var
         self.var_ = LogVariable(var)
         self.mu_ = Variable(mu)
         self.sigma_ = Variable(sigma)
@@ -767,11 +770,21 @@ class LogNormal(Constant):
         return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_,
                                    self.mu_, self.sigma_)
 
-    def eval(self, x_in, mu_in, sigma_in):
+    def eval(self, **kwargs):
+        if self.symbol_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        x_in = kwargs[self.symbol_ + '_in']
+        if self.mu_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.mu_}!')
+        mu_in = kwargs[self.mu_ + '_in']
+        if self.sigma_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.sigma_}!')
+        sigma_in = kwargs[self.sigma_ + '_in']
         num  = np.power(np.log(x_in) - mu_in, 2)
         den  = 2*np.power(sigma_in, 2)
         exp  = np.exp(- num / den)
         norm = 1. / (x_in * sigma_in * np.sqrt(2 * np.math.pi))
+        return norm * exp
 
 
 class LogLogNormal(LogNormal):
