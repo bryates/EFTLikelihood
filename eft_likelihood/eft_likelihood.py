@@ -103,6 +103,14 @@ class Constant():
         return self.simplify()
 
 
+class Pi(Constant):
+    def __init__(self):
+        super().__init__(Constant(np.math.pi))
+
+    def __str__(self):
+        return 'pi'
+
+
 class Log(Constant):
     def __init__(self, val):
         super().__init__(val)
@@ -672,6 +680,26 @@ class LogLikelohood:
                 rate = max(rate * decay, in_rate*.001)
                 if debug: print('rate after decay', rate, 'decay', decay)
         return np.sqrt(minimum.value())
+
+
+class LogNormal(Constant):
+    def __init__(self, var='x', mu='u', sigma='s'):
+        pow_var = Power(Diff(LogVariable(var), Variable(mu)), Constant(2))
+        self.var_ = Quotient(
+                        Expo(Quotient(Prod(Constant(-1), pow_var),
+                            Prod(Constant(2), Power(Variable(sigma),
+                                Constant(2))))),
+                        Prod(Prod(Variable(var), Variable(sigma)),
+                            Power(Prod(Constant(2), Pi()), Constant(1/2))))
+
+    def __str__(self):
+        return str(self.var_)
+
+    def ln(self):
+        return self.var_.ln()
+
+    def derivative(self, var='x'):
+        return self.var_.derivative(var)
 
 
 if __name__ == '__main__':
