@@ -122,11 +122,6 @@ def test_EFTPoisson():
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(eft_pois_test.ln().derivative()))
     assert (eft_pois_test.eval(x_in=1,k_in=2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    '''
-    ln:   ((k * ln((((eft_pois_test^2) + eft_pois_test) + 1))) + ((-1 * (((eft_pois_test^2) + eft_pois_test) + 1)) - ln(k)))
-        derivative:    (((k * ((((eft_pois_test^2) + eft_pois_test) + 1)^(k - 1))) * (e^(-1 * (((eft_pois_test^2) + eft_pois_test) + 1)) / k!)) + (((((eft_pois_test^2) + eft_pois_test) + 1)^k) * ((((0 * (((eft_pois_test^2) + eft_pois_test) + 1)) + (-1 * (((2 * eft_pois_test) + 1) + 0))) * e^(-1 * (((eft_pois_test^2) + eft_pois_test) + 1))) / k!)))
-    f'(ln(eft_pois_test)):   (((0 * ln((((eft_pois_test^2) + eft_pois_test) + 1))) + (k * ((((2 * eft_pois_test) + 1) + 0) / (((eft_pois_test^2) + eft_pois_test) + 1)))) + (((0 * (((eft_pois_test^2) + eft_pois_test) + 1)) + (-1 * (((2 * eft_pois_test) + 1) + 0))) - 0))
-    '''
     assert (eft_pois_test.ln().eval(x_in=1,k_in=2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
     assert (eft_pois_test.ln().derivative().eval(x_in=1,k_in=2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
 
