@@ -110,6 +110,17 @@ class Pi(Constant):
     def __str__(self):
         return 'pi'
 
+    def ln(self):
+        return LogPi()
+
+
+class LogPi(Constant):
+    def __init__(self):
+        super().__init__(Constant(np.log(np.math.pi)))
+
+    def __str__(self):
+        return 'ln(pi)'
+
 
 class Log(Constant):
     def __init__(self, val):
