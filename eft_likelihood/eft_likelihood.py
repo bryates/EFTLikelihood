@@ -132,7 +132,7 @@ class Log(Constant):
     def eval(self, **kwargs):
         if not issubclass(type(self.value()), Constant):
             return Constant(np.log(self.value()))
-        if 'k_in' not in kwargs:
+        if 'x_in' not in kwargs:
             raise Exception(f'Please provide k_in!')
         return Constant(np.log(self.value().eval(**kwargs).value()))
 
@@ -562,17 +562,19 @@ class Poisson(Prod):
         return LogPoisson(Sum(self.lhs_.ln(), self.rhs_.ln()), self.symbol_, self.param_)
 
     def derivative(self, var='x'):
-        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.symbol_, self.param_)
+        return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var),
+                   self.symbol_, self.param_)
 
     def eval(self, **kwargs):
         if self.symbol_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
         var = Constant(-1) * Variable(self.var_)
-        if self.param_ not in kwargs:
+        if self.param_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_}!')
         k_in = kwargs[self.param_ + '_in']
-        lhs = Power(self.symbol_, Constant(k_in)).eval(**kwargs)
-        rhs = Expo(var).eval(**kwargs) / Factorial(k_in).eval(k_in)
+        x_in = kwargs[self.symbol_ + '_in']
+        lhs = Power(self.symbol_, Constant(k_in)).eval(x_in=x_in)
+        rhs = Expo(var).eval(x_in=x_in) / Factorial(k_in).eval(k_in=k_in)
         return Constant(lhs * rhs)
 
 
@@ -613,18 +615,19 @@ class DerivativePoisson(Sum):
         self.param_k_ = k_in
 
     def derivative(self, var):
-        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)), self.param_k_)
+        return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)),
+                   self.param_k_)
 
     def eval(self, **kwargs):
-        if self.symbol_ not in kwargs:
+        if self.symbol_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        x_in = kwargs[self.symbol_]
-        if self.param_ not in kwargs:
-            raise Exception(f'Please provide {self.param_}!')
-        k_in = kwargs[self.param_]
+        x_in = kwargs[self.symbol_ + '_in']
+        if self.param_k_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.param_k_}!')
+        k_in = kwargs[self.param_k_ + '_in']
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
-        return Constant(lhs_.eval(x_in) + rhs_.eval(x_in))
+        return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
 class EFTPoisson(Poisson):
@@ -636,15 +639,15 @@ class EFTPoisson(Poisson):
         self.rhs_ = Quotient(Expo(Prod(Constant(-1), self.var_)), Factorial(param))
 
     def eval(self, **kwargs):
-        if self.symbol_ not in kwargs:
+        if self.symbol_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        x_in = kwargs[self.symbol_]
-        if self.param_ not in kwargs:
+        x_in = kwargs[self.symbol_ + '_in']
+        if self.param_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_}!')
-        k_in = kwargs[self.param_]
-        var = self.var_.eval(x_in)
-        lhs = Power(var, Constant(k_in)).eval(x_in)
-        rhs = Expo(Prod(Constant(-1), var)).eval(x_in) / Factorial(k_in).eval(k_in)
+        k_in = kwargs[self.param_ + '_in']
+        var = self.var_.eval(x_in=x_in)
+        lhs = Power(var, Constant(k_in)).eval(x_in=x_in)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x_in=x_in) / Factorial(k_in).eval(k_in)
         return Constant(lhs * rhs)
 
 
@@ -662,9 +665,10 @@ class LogLikelohood:
                     temperature=None, debug=False, doError=False, doHess=False, **kwargs):
 
         def hessian(derivative, var, minimum, **data):
-            hess = derivative.gradient(self, self.var_)#derivative(var) 
+            hess = derivative.gradient(self, self.var_)#derivative(var)
             if (nll_sigma - 0.5) > 1e-18:
-                warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1, answer WILL be wrong')
+                warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1,\
+                               answer WILL be wrong')
             return Constant(1/np.sqrt(-1 * hess.eval(minimum, **data).value()))
 
         derivative = self.log_likelihood_.gradient(self.var_)#derivative(var)
@@ -754,15 +758,14 @@ class LogNormal(Constant):
                             Power(Prod(Constant(2), Pi()), Constant(1/2))))
 
     def __str__(self):
-        print(str(self.var_.derivative('s')), str(self.mu_.derivative('s')), str(self.sigma_.derivative('s')))
         return str(self.log_normal_)
 
     def ln(self):
-        print('LogNormal ln', type(self.log_normal_.ln()))
         return LogLogNormal(self.log_normal_.ln(), self.var_, self.mu_, self.sigma_)
 
     def derivative(self, var='x'):
-        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_, self.mu_, self.sigma_)
+        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_,
+                                   self.mu_, self.sigma_)
 
     def eval(self, x_in, mu_in, sigma_in):
         num  = np.power(np.log(x_in) - mu_in, 2)

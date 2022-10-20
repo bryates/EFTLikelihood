@@ -27,13 +27,13 @@ def test_Variable():
     print('  ' + str(var_test.derivative()))
     print('    f\'(ln(var_test)): ', end='')
     print('  ' + str(var_test.ln().derivative()))
-    assert ((Constant(2)*var_test-var_test).ln().eval(2) - np.log(2*2 - 2))<1e-18
-    assert ((Constant(2)*var_test-var_test).ln().eval(1) - np.log(2*1 - 1))<1e-18
-    assert ((Constant(2)*var_test-var_test).ln().eval(2) - np.log(2*2 - 2))<1e-18
-    assert type(var_test.eval(1)+var_test.eval(1))==Constant
-    assert type(var_test.eval(1)-var_test.eval(1))==Constant
-    assert type(var_test.eval(1)*var_test.eval(1))==Constant
-    assert type(var_test.eval(1)/var_test.eval(1))==Constant
+    assert ((Constant(2)*var_test-var_test).ln().eval(x_in=2) - np.log(2*2 - 2))<1e-18
+    assert ((Constant(2)*var_test-var_test).ln().eval(x_in=1) - np.log(2*1 - 1))<1e-18
+    assert ((Constant(2)*var_test-var_test).ln().eval(x_in=2) - np.log(2*2 - 2))<1e-18
+    assert type(var_test.eval(x_in=1)+var_test.eval(x_in=1))==Constant
+    assert type(var_test.eval(x_in=1)-var_test.eval(x_in=1))==Constant
+    assert type(var_test.eval(x_in=1)*var_test.eval(x_in=1))==Constant
+    assert type(var_test.eval(x_in=1)/var_test.eval(x_in=1))==Constant
     var_y = Variable('y')
     assert var_test.derivative('y').value() == 0
     assert var_y.derivative('x').value() == 0
@@ -53,11 +53,11 @@ def test_Power():
     print('   ', other_pow_test+Power('x', 1))
     print('    derivative: ', end='')
     print('   ' + str(pow_test.derivative()))
-    assert (pow_test.eval(2) - 2**2)<1e-18
-    assert type(pow_test.eval(1)+pow_test.eval(1))==Constant
-    assert type(pow_test.eval(1)-pow_test.eval(1))==Constant
-    assert type(pow_test.eval(1)*pow_test.eval(1))==Constant
-    assert type(pow_test.eval(1)/pow_test.eval(1))==Constant
+    assert (pow_test.eval(x_in=2) - 2**2)<1e-18
+    assert type(pow_test.eval(x_in=1)+pow_test.eval(x_in=1))==Constant
+    assert type(pow_test.eval(x_in=1)-pow_test.eval(x_in=1))==Constant
+    assert type(pow_test.eval(x_in=1)*pow_test.eval(x_in=1))==Constant
+    assert type(pow_test.eval(x_in=1)/pow_test.eval(x_in=1))==Constant
 
 def test_Polynomial():
     poly_test = Polynomial('x', [2,1,1],  2)
@@ -68,14 +68,14 @@ def test_Polynomial():
     print('  ' + str(poly_test.ln()))
     print('    derivative: ', end='')
     print('   ' + str(poly_test.derivative()))
-    assert (poly_test.eval(2) - (2 * 2**2 + 2**1 + 1))<1e-18
-    assert type(poly_test.eval(1)+poly_test.eval(1))==Constant
-    assert type(poly_test.eval(1)-poly_test.eval(1))==Constant
-    assert type(poly_test.eval(1)*poly_test.eval(1))==Constant
-    assert type(poly_test.eval(1)/poly_test.eval(1))==Constant
+    assert (poly_test.eval(x_in=2) - (2 * 2**2 + 2**1 + 1))<1e-18
+    assert type(poly_test.eval(x_in=1)+poly_test.eval(x_in=1))==Constant
+    assert type(poly_test.eval(x_in=1)-poly_test.eval(x_in=1))==Constant
+    assert type(poly_test.eval(x_in=1)*poly_test.eval(x_in=1))==Constant
+    assert type(poly_test.eval(x_in=1)/poly_test.eval(x_in=1))==Constant
     print(poly_test.derivative('x'))
-    assert (poly_test.derivative().eval(2) - (2 * 2 * 2**1 + 1))<1e-18
-    assert poly_test.derivative('y').eval(2).value() == 0
+    assert (poly_test.derivative().eval(x_in=2) - (2 * 2 * 2**1 + 1))<1e-18
+    assert poly_test.derivative('y').eval(x_in=2).value() == 0
 
 def test_Expo():
     expo_test = Expo(Prod(Constant(-1), Variable('x')))
@@ -86,12 +86,12 @@ def test_Expo():
     print('  ' + str(expo_test.ln()))
     print('    derivative: ', end='')
     print('   ' + str(expo_test.derivative()))
-    assert (expo_test.eval(2) - np.exp(-2))<1e-18
-    assert (expo_test.derivative().eval(2) - -np.exp(-2))<1e-18
-    assert type(expo_test.eval(1)+expo_test.eval(1))==Constant
-    assert type(expo_test.eval(1)-expo_test.eval(1))==Constant
-    assert type(expo_test.eval(1)*expo_test.eval(1))==Constant
-    assert type(expo_test.eval(1)/expo_test.eval(1))==Constant
+    assert (expo_test.eval(x_in=2) - np.exp(-2))<1e-18
+    assert (expo_test.derivative().eval(x_in=2) - -np.exp(-2))<1e-18
+    assert type(expo_test.eval(x_in=1)+expo_test.eval(x_in=1))==Constant
+    assert type(expo_test.eval(x_in=1)-expo_test.eval(x_in=1))==Constant
+    assert type(expo_test.eval(x_in=1)*expo_test.eval(x_in=1))==Constant
+    assert type(expo_test.eval(x_in=1)/expo_test.eval(x_in=1))==Constant
 
 def test_Poisson():
     pois_test = Poisson('x', 'k')
@@ -104,10 +104,10 @@ def test_Poisson():
     print('   ' + str(pois_test.derivative()))
     print('    f\'(ln(pois_test)): ', end='')
     print('  ' + str(pois_test.ln().derivative()))
-    assert (pois_test.eval(1,2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
-    assert (pois_test.derivative().eval(1,2) - (np.exp(-1) - np.exp(-1)/2))<1e-18 # float has precision of 1e-18
-    assert (pois_test.derivative().eval(1,10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
-    assert (pois_test.ln().derivative().eval(2,10) - (10/2-1))<1e-18 # float has precision of 1e-18
+    assert (pois_test.eval(x_in=1, k_in=2) - (1**2 * np.exp(-1) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
+    assert (pois_test.derivative().eval(x_in=1, k_in=2) - (np.exp(-1) - np.exp(-1)/2))<1e-18 # float has precision of 1e-18
+    assert (pois_test.derivative().eval(x_in=1, k_in=10) - (np.exp(-1)*(10-1)*(1**(10-1)/np.math.factorial(10))))<1e-18 # float has precision of 1e-18
+    assert (pois_test.ln().derivative().eval(x_in=2, k_in=10) - (10/2-1))<1e-18 # float has precision of 1e-18
 
 def test_EFTPoisson():
     poly_test = Polynomial('x', [1,1,1],  2)
@@ -121,14 +121,14 @@ def test_EFTPoisson():
     print('   ' + str(eft_pois_test.derivative()))
     print('    f\'(ln(x)): ', end='')
     print('  ' + str(eft_pois_test.ln().derivative()))
-    assert (eft_pois_test.eval(1,2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
+    assert (eft_pois_test.eval(x_in=1,k_in=2) - ((1**2 + 1**1 + 1)**2 * np.exp(-1*(1**2 + 1**1 +1)) / np.math.factorial(2)))<1e-18 # float has precision of 1e-18
     '''
     ln:   ((k * ln((((eft_pois_test^2) + eft_pois_test) + 1))) + ((-1 * (((eft_pois_test^2) + eft_pois_test) + 1)) - ln(k)))
         derivative:    (((k * ((((eft_pois_test^2) + eft_pois_test) + 1)^(k - 1))) * (e^(-1 * (((eft_pois_test^2) + eft_pois_test) + 1)) / k!)) + (((((eft_pois_test^2) + eft_pois_test) + 1)^k) * ((((0 * (((eft_pois_test^2) + eft_pois_test) + 1)) + (-1 * (((2 * eft_pois_test) + 1) + 0))) * e^(-1 * (((eft_pois_test^2) + eft_pois_test) + 1))) / k!)))
     f'(ln(eft_pois_test)):   (((0 * ln((((eft_pois_test^2) + eft_pois_test) + 1))) + (k * ((((2 * eft_pois_test) + 1) + 0) / (((eft_pois_test^2) + eft_pois_test) + 1)))) + (((0 * (((eft_pois_test^2) + eft_pois_test) + 1)) + (-1 * (((2 * eft_pois_test) + 1) + 0))) - 0))
     '''
-    assert (eft_pois_test.ln().eval(1,2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
-    assert (eft_pois_test.ln().derivative().eval(1,2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
+    assert (eft_pois_test.ln().eval(x_in=1,k_in=2) - (2 * np.log(1**2 + 1**1 + 1) - (1**2 + 1**1 + 1) - np.log(2)))<1e-18 # float has precision of 1e-18
+    assert (eft_pois_test.ln().derivative().eval(x_in=1,k_in=2) - (2 * (2*1 + 1) * 1./(1**2 + 1**1 + 1) - (2*1 + 1)))<1e-18 # float has precision of 1e-18
 
 def test_LogNormal():
     log_normal_test = LogNormal('x', 'u', 's')
