@@ -93,6 +93,12 @@ class Constant():
             return Constant(0)
         return self.val_.derivative(var)
 
+    def gradient(self, var=[]):
+        grad = self.derivative(var[0])
+        for v in var[1:]:
+            grad = Sum(grad, self.derivative(v))
+        return grad
+
     def eval(self, x_in=None):
         return self.simplify()
 
@@ -534,7 +540,6 @@ class Poisson(Prod):
 
     def derivative(self, var='x'):
         return DerivativePoisson(Prod(self.lhs_, self.rhs_).derivative(var), self.param_)
-
     def eval(self, x_in, k_in):
         var = Constant(-1) * Variable(k_in)
         lhs = Power(self.symbol_, Constant(k_in)).eval(x_in)
@@ -551,6 +556,12 @@ class LogPoisson(Sum):
     def derivative(self, var='x'):
         return DerivativePoisson(Sum(self.lhs_.derivative(var),
                    self.rhs_.derivative(var)), self.param_k_)
+
+    def gradient(self, var=[]):
+        grad = self.derivative(var[0])
+        for v in var[1:]:
+            grad = LogPoisson(Sum(grad, self.derivative(v)), self.param_k_)
+        return grad
 
     def eval(self, x_in, k_in):
         lhs_ = self.lhs_.set_param(k_in)
@@ -587,23 +598,26 @@ class EFTPoisson(Poisson):
         return Constant(lhs * rhs)
 
 
-class LogLikelihood:
-    def __init__(self, dist=Variable('x'), nuis=None):
+class LogLikelohood:
+    def __init__(self, dist=Variable('x'), nuis=None, var='x'):
         if nuis is not None:
             self.log_likelihood_ = Sum(dist.ln(), nuis.ln())
         else:
             self.log_likelihood_ = dist.ln()
+        if not isinstance(var, list):
+            var = [var]
+        self.var_ = var
 
     def minimize_nll(self, var, x_in, k_in, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
                     temperature=None, debug=False, doError=False, doHess=False):
 
         def hessian(derivative, var, minimum, data):
-            hess = derivative.derivative(var) 
+            hess = derivative.gradient(self, self.var_)#derivative(var) 
             if (nll_sigma - 0.5) > 1e-18:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1, answer WILL be wrong')
             return Constant(1/np.sqrt(-1 * hess.eval(minimum, data).value()))
 
-        derivative = self.log_likelihood_.derivative(var)
+        derivative = self.log_likelihood_.gradient(self.var_)#derivative(var)
         grad = Constant(0)
         minimum = Constant(x_in)
         in_rate = rate
