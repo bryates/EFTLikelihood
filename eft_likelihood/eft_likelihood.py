@@ -167,7 +167,10 @@ class LogParameter(Parameter):
     def set_param(self, k_in):
         return Constant(np.log(k_in))
 
-    def eval(self, k_in):
+    def eval(self, **kwargs):
+        if 'k_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        k_in = kwargs['k_in']
         return Constant(np.log(np.math.factorial(k_in)))
 
 
@@ -181,7 +184,10 @@ class Factorial(Parameter):
     def ln(self):
         return LogFactorial(self.param_)
 
-    def eval(self, k_in):
+    def eval(self, **kwargs):
+        if 'k_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        k_in = kwargs['k_in']
         return Constant(np.math.factorial(k_in))
 
 
@@ -195,7 +201,10 @@ class LogFactorial(Factorial):
     def set_param(self, k_in):
         return Constant(np.log(float(np.math.factorial(k_in))))
 
-    def eval(self, k_in):
+    def eval(self, **kwargs):
+        if 'k_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        k_in = kwargs['k_in']
         return Constant(np.log(float(np.math.factorial(k_in))))
 
 
@@ -422,7 +431,10 @@ class Variable(Constant):
             return Constant(1)
         return Constant(0)
 
-    def eval(self, x_in):
+    def eval(self, **kwargs):
+        if 'x_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        x_in = kwargs['x_in']
         return Constant(x_in)
 
 
@@ -647,7 +659,7 @@ class EFTPoisson(Poisson):
         k_in = kwargs[self.param_ + '_in']
         var = self.var_.eval(x_in=x_in)
         lhs = Power(var, Constant(k_in)).eval(x_in=x_in)
-        rhs = Expo(Prod(Constant(-1), var)).eval(x_in=x_in) / Factorial(k_in).eval(k_in)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x_in=x_in) / Factorial(k_in).eval(k_in=k_in)
         return Constant(lhs * rhs)
 
 
@@ -655,8 +667,11 @@ class LogLikelohood:
     def __init__(self, dist=Variable('x'), nuis=None, var='x'):
         if nuis is not None:
             self.log_likelihood_ = Sum(dist.ln(), nuis.ln())
+        self.log_likelihood_ = dist.ln()
+        if nuis is not None:
+            self.nuis_ = nuis.ln()
         else:
-            self.log_likelihood_ = dist.ln()
+            self.nuis_ = Constant(0)
         if not isinstance(var, list):
             var = [var]
         self.var_ = var
@@ -671,7 +686,9 @@ class LogLikelohood:
                                answer WILL be wrong')
             return Constant(1/np.sqrt(-1 * hess.eval(minimum, **data).value()))
 
-        derivative = self.log_likelihood_.gradient(self.var_)#derivative(var)
+        derivative = self.log_likelihood_.gradient(self.var_)
+        d_nuis = self.nuis_.gradient(self.var_)
+        print(type(self.nuis_), type(d_nuis))
         grad = Constant(0)
         minimum = Constant(x_in)
         in_rate = rate
@@ -679,7 +696,7 @@ class LogLikelohood:
             tmp_kwargs = kwargs.copy()
             tmp_kwargs['x_in'] = minimum
             tmp_kwargs['symbol'] = var
-            grad = derivative.eval(**tmp_kwargs)
+            grad = derivative.eval(**tmp_kwargs) + d_nuis.eval(**tmp_kwargs)
             min_val = derivative.eval(**tmp_kwargs)
             minimum = minimum + grad * rate
             if debug:
@@ -746,7 +763,7 @@ class LogLikelohood:
         return np.sqrt(minimum.value())
 
 
-class LogNormal(Constant):
+class LogNormal(Variable):
     def __init__(self, var='x', mu='u', sigma='s'):
         self.symbol_ = var
         self.var_ = LogVariable(var)
@@ -784,22 +801,42 @@ class LogNormal(Constant):
         den  = 2*np.power(sigma_in, 2)
         exp  = np.exp(- num / den)
         norm = 1. / (x_in * sigma_in * np.sqrt(2 * np.math.pi))
-        return norm * exp
+        return Constant(norm * exp)
 
 
 class LogLogNormal(LogNormal):
     def __init__(self, log_norm, var, mu, sigma):
-        #self.var_ = log_norm.var_
-        #self.mu_ = log_norm.mu_
-        #self.sigma_ = log_norm.sigma_
+        self.var_ = var
+        self.mu_ = mu
+        self.sigma_ = sigma
         super().__init__(var, mu, sigma)
         self.log_normal_ = log_norm
+
+    def derivative(self, var):
+        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_, self.mu_, self.sigma_)
+
+    def gradient(self, var=[]):
+        grad = self.derivative(var[0])
+        for v in var[1:]:
+            grad = Sum(grad, self.derivative(v))
+        grad = DerivativeLogNormal(grad, self.var_, self.mu_, self.sigma_)
+        return grad
 
 
 class DerivativeLogNormal(LogNormal):
     def __init__(self, log_norm, var, mu, sigma):
         super().__init__(var, mu, sigma)
         self.log_normal_ = log_norm
+
+    def eval(self, **kwargs):
+        return self.log_normal_.eval(**kwargs)
+
+    def gradient(self, var=[]):
+        grad = self.derivative(var[0])
+        for v in var[1:]:
+            grad = Sum(grad, self.derivative(v))
+        grad = DerivativeLogNormal(grad, self.var_, self.mu_, self.sigma_)
+        return grad
 
 
 if __name__ == '__main__':

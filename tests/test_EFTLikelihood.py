@@ -140,4 +140,4 @@ def test_LogNormal():
     #print('    derivative: ', end='')
     #print('   ' + str(log_normal_test.derivative()))
     print('    f\'(ln(x)): ', end='')
-    print('  ' + str(log_normal_test.ln().derivative()))
+    print('  ' + str(log_normal_test.ln().derivative('x')))
