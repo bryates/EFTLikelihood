@@ -742,47 +742,66 @@ class LogLikelohood:
         #debug = kwargs['debug']
         #doError = kwargs['doError']
 
-        grad = Constant(1)
+        grad = [Constant(0)] * len(self.var_)
+        min_val = [Constant(0) for x in self.var_]
         tmp_kwargs = kwargs.copy()
-        tmp_kwargs['x_in'] = true_min
+        minimum = {}
+        for x in true_min:
+            tmp_kwargs[x + '_in'] = true_min[x].value()
+            minimum[x] = Constant(0)
         target = self.log_likelihood_.eval(**tmp_kwargs) - nll_sigma * 2
-        minimum = true_min + np.sqrt(true_min.value()) * nll_sigma * 2 # Poisson guess
+        for x in minimum:
+            minimum[x] = Constant(true_min[x].value() + np.sqrt(true_min[x].value()) * nll_sigma * 2) # Poisson guess
         in_rate = rate
+        rate = Constant(rate)
         for istep in range(iterations):
-            grad = target - self.log_likelihood_.eval(**tmp_kwargs)
-            min_val = self.log_likelihood_.eval(**tmp_kwargs)
+            for ix,x in enumerate(self.var_):
+                tmp_kwargs = kwargs.copy()
+                tmp_kwargs[x + '_in'] = minimum[x].value()
+                grad[ix] = target - self.log_likelihood_.eval(**tmp_kwargs) + self.nuis_.eval(**tmp_kwargs)
+                min_val[ix] = self.log_likelihood_.eval(**tmp_kwargs)
+                minimum[x] = Constant(minimum[x]) + grad[ix] * rate
+            global_min_val = Constant(0)
+            global_grad = Constant(0)
+            for g in min_val:
+                global_min_val += g.value()
+            for g in grad:
+                global_grad += g.value()
             if debug:
-                print('min_val', min_val, 'target', target)
-                print('istep=', istep, 'minimum=', minimum, 'Delta min_val=', target - min_val,
+                print('min_val', global_min_val, 'target', target)
+                print('istep=', istep, 'minimum=', minimum, 'Delta min_val=', target - global_min_val,
                     'nll_sigma=', nll_sigma,
-                    'target=', target, 'min_val=', min_val,
-                    'grad=', grad, 'grad*rate==', grad*rate,
-                    'minimum-grad*rate==', minimum-grad*rate)
-                print('diff', target.value() - min_val.value(), grad.value()-nll_sigma)
-            if abs(target.value() - min_val.value()) < epsilon:
-                return np.sqrt(minimum.value())
-            minimum = minimum - grad
-            tmp_kwargs['x_in'] = minimum
+                    'target=', target, 'min_val=', global_min_val,
+                    'grad=', global_grad, 'grad*rate==', global_grad*rate,
+                    'minimum-grad*rate==', minimum[x]-global_grad*rate)
+                print('diff', target.value() - global_min_val.value(), global_grad.value()-nll_sigma)
+            if abs(target.value() - global_min_val.value()) < epsilon:
+                minimum = {m: np.sqrt(v.value()) for m,v in minimum.items()}
+                return minimum
+            for x in self.var_:
+                minimum[x] = minimum[x] - global_grad
+                tmp_kwargs[x + '_in'] = minimum[x]
             if temperature is not None:
                 decay = np.exp(-1*istep/temperature) # cooling
                 rate = max(rate * decay, in_rate*.001)
                 if debug:
                     print('rate after decay', rate, 'decay', decay)
-        return np.sqrt(minimum.value())
+        minimum = {m: np.sqrt(v.value()) for m,v in minimum.items()}
+        return minimum
 
 
 class LogNormal(Variable):
     def __init__(self, var='x', mu='u', sigma='s', mu_in=1, sigma_in=1):
         self.symbol_ = var
         self.var_ = LogVariable(var)
-        self.mu_ = Variable(mu)
-        self.sigma_ = Variable(sigma)
-        pow_var = Power(Diff(self.var_, self.mu_), Constant(2))
+        self.mu_ = mu
+        self.sigma_ = sigma
+        pow_var = Power(Diff(self.var_, Variable(self.mu_)), Constant(2))
         self.log_normal_ = Quotient(
                         Expo(Quotient(Prod(Constant(-1), pow_var),
-                            Prod(Constant(2), Power(self.sigma_,
+                            Prod(Constant(2), Power(Variable(self.sigma_),
                                 Constant(2))))),
-                        Prod(Prod(self.var_, self.sigma_),
+                        Prod(Prod(self.var_, Variable(self.sigma_)),
                             Power(Prod(Constant(2), Pi()), Constant(1/2))))
         self.initial_mu_ = Constant(mu_in)
         self.initial_sigma_ = Constant(sigma_in)
@@ -793,10 +812,10 @@ class LogNormal(Variable):
         return str(self.log_normal_)
 
     def ln(self):
-        return LogLogNormal(self.log_normal_.ln(), self.var_, self.mu_, self.sigma_)
+        return LogLogNormal(self.log_normal_.ln(), self.symbol_, self.mu_, self.sigma_)
 
     def derivative(self, var='x'):
-        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_,
+        return DerivativeLogNormal(self.log_normal_.derivative(var), self.symbol_,
                                    self.mu_, self.sigma_)
 
     def eval(self, **kwargs):
@@ -818,14 +837,14 @@ class LogNormal(Variable):
 
 class LogLogNormal(LogNormal):
     def __init__(self, log_norm, var, mu, sigma):
-        self.var_ = var
+        self.symbol_ = var
         self.mu_ = mu
         self.sigma_ = sigma
         super().__init__(var, mu, sigma)
         self.log_normal_ = log_norm
 
     def derivative(self, var):
-        return DerivativeLogNormal(self.log_normal_.derivative(var), self.var_, self.mu_, self.sigma_)
+        return DerivativeLogNormal(self.log_normal_.derivative(var), self.symbol_, self.mu_, self.sigma_)
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
@@ -838,6 +857,7 @@ class LogLogNormal(LogNormal):
 class DerivativeLogNormal(LogNormal):
     def __init__(self, log_norm, var, mu, sigma):
         super().__init__(var, mu, sigma)
+        self.symbol_ = var
         self.log_normal_ = log_norm
 
     def eval(self, **kwargs):
