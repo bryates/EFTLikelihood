@@ -616,7 +616,6 @@ class LogPoisson(Sum):
         k_in = kwargs[self.param_k_ + '_in']
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
-        print('Eval', x_in, k_in)
         return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
@@ -699,22 +698,20 @@ class LogLikelohood:
                 tmp_kwargs = kwargs.copy()
                 tmp_kwargs[x + '_in'] = minimum[x]
                 tmp_kwargs['symbol'] = var
-                print('Evaluating', tmp_kwargs)
                 grad[ix] = derivative.eval(**tmp_kwargs) + d_nuis.eval(**tmp_kwargs)
                 min_val[ix] = derivative.eval(**tmp_kwargs)
                 minimum[x] = minimum[x] + grad[ix] * rate
-            print(grad)
-            if debug:
-                print('istep=', istep, 'minimum=', minimum[x], 'min_val=', min_val,
-                    'grad=', sum(grad), 'grad*rate==', sum(grad)*rate,
-                    'minimum-grad*rate==', minimum[x]-grad*rate)
-            g_min_val = 0
-            g_grad = 0
+            global_min_val = Constant(0)
+            global_grad = Constant(0)
             for g in min_val:
-                g_min_val += g.value()
+                global_min_val += g.value()
             for g in grad:
-                g_grad += g.value()
-            if abs(g_min_val) < epsilon or abs(g_grad) < epsilon:
+                global_grad += g.value()
+            if debug:
+                print('istep=', istep, 'minimum=', minimum[x], 'min_val=', global_min_val,
+                    'grad=', global_grad, 'grad*rate==', global_grad*rate,
+                    'minimum-grad*rate==', minimum[x]-global_grad*rate)
+            if abs(global_min_val.value()) < epsilon or abs(global_grad.value()) < epsilon:
                 if not doError:
                     return minimum
                 if doHess:
