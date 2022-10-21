@@ -628,7 +628,7 @@ class DerivativePoisson(Sum):
 
     def derivative(self, var):
         return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)),
-                   self.param_k_)
+                   self.symbol_, self.param_k_)
 
     def eval(self, **kwargs):
         if self.symbol_ + '_in' not in kwargs:
@@ -680,11 +680,17 @@ class LogLikelohood:
                     temperature=None, debug=False, doError=False, doHess=False, **kwargs):
 
         def hessian(derivative, var, minimum, **data):
-            hess = derivative.gradient(self, self.var_)
+            tmp_kwargs = self.var_.copy()
+            tmp_kwargs.append('k')
             if (nll_sigma - 0.5) > 1e-18:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1,\
                                answer WILL be wrong')
-            return Constant(1/np.sqrt(-1 * hess.eval(minimum, **data).value()))
+            hess_matrix = {}
+            for x in self.var_:
+                print(derivative.derivative('u_in'))
+                hess = derivative.gradient(x)
+                hess_matrix[x] = Constant(1/np.sqrt(-1 * hess.eval(**data).value()))
+            return hess_matrix
 
         derivative = self.log_likelihood_.gradient(self.var_)
         d_nuis = self.nuis_.gradient(self.var_)
