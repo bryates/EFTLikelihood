@@ -687,7 +687,6 @@ class LogLikelohood:
                                answer WILL be wrong')
             hess_matrix = {}
             for x in self.var_:
-                print(derivative.derivative('u_in'))
                 hess = derivative.gradient(x)
                 hess_matrix[x] = Constant(1/np.sqrt(-1 * hess.eval(**data).value()))
             return hess_matrix
