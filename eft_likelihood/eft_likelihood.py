@@ -616,6 +616,7 @@ class LogPoisson(Sum):
         k_in = kwargs[self.param_k_ + '_in']
         lhs_ = self.lhs_.set_param(k_in)
         rhs_ = self.rhs_.set_param(k_in)
+        print('Eval', x_in, k_in)
         return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
@@ -676,7 +677,7 @@ class LogLikelohood:
             var = [var]
         self.var_ = var
 
-    def minimize_nll(self, var='x', x_in=1, nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
+    def minimize_nll(self, var='x', nll_sigma=0.5, iterations=1000, epsilon=1e-8, rate=1e-1,
                     temperature=None, debug=False, doError=False, doHess=False, **kwargs):
 
         def hessian(derivative, var, minimum, **data):
@@ -688,21 +689,32 @@ class LogLikelohood:
 
         derivative = self.log_likelihood_.gradient(self.var_)
         d_nuis = self.nuis_.gradient(self.var_)
-        grad = Constant(0)
-        minimum = Constant(x_in)
+        grad = [Constant(0)] * len(self.var_)
+        minimum = {x.replace('_in', ''): Constant(kwargs[x]) for x in kwargs if '_in' in x}
+        min_val = [Constant(0) for x in self.var_]
         in_rate = rate
+        rate = Constant(rate)
         for istep in range(iterations):
-            tmp_kwargs = kwargs.copy()
-            tmp_kwargs['x_in'] = minimum
-            tmp_kwargs['symbol'] = var
-            grad = derivative.eval(**tmp_kwargs) + d_nuis.eval(**tmp_kwargs)
-            min_val = derivative.eval(**tmp_kwargs)
-            minimum = minimum + grad * rate
+            for ix,x in enumerate(self.var_):
+                tmp_kwargs = kwargs.copy()
+                tmp_kwargs[x + '_in'] = minimum[x]
+                tmp_kwargs['symbol'] = var
+                print('Evaluating', tmp_kwargs)
+                grad[ix] = derivative.eval(**tmp_kwargs) + d_nuis.eval(**tmp_kwargs)
+                min_val[ix] = derivative.eval(**tmp_kwargs)
+                minimum[x] = minimum[x] + grad[ix] * rate
+            print(grad)
             if debug:
-                print('istep=', istep, 'minimum=', minimum, 'min_val=', min_val,
-                    'grad=', grad, 'grad*rate==', grad*rate,
-                    'minimum-grad*rate==', minimum-grad*rate)
-            if abs(min_val.value()) < epsilon or abs(grad.value()) < epsilon:
+                print('istep=', istep, 'minimum=', minimum[x], 'min_val=', min_val,
+                    'grad=', sum(grad), 'grad*rate==', sum(grad)*rate,
+                    'minimum-grad*rate==', minimum[x]-grad*rate)
+            g_min_val = 0
+            g_grad = 0
+            for g in min_val:
+                g_min_val += g.value()
+            for g in grad:
+                g_grad += g.value()
+            if abs(g_min_val) < epsilon or abs(g_grad) < epsilon:
                 if not doError:
                     return minimum
                 if doHess:
@@ -763,7 +775,7 @@ class LogLikelohood:
 
 
 class LogNormal(Variable):
-    def __init__(self, var='x', mu='u', sigma='s'):
+    def __init__(self, var='x', mu='u', sigma='s', mu_in=1, sigma_in=1):
         self.symbol_ = var
         self.var_ = LogVariable(var)
         self.mu_ = Variable(mu)
@@ -775,6 +787,10 @@ class LogNormal(Variable):
                                 Constant(2))))),
                         Prod(Prod(self.var_, self.sigma_),
                             Power(Prod(Constant(2), Pi()), Constant(1/2))))
+        self.initial_mu_ = Constant(mu_in)
+        self.initial_sigma_ = Constant(sigma_in)
+        self.best_mu = Constant(mu_in)
+        self.best_sigma_ = Constant(sigma_in)
 
     def __str__(self):
         return str(self.log_normal_)
