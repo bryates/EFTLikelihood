@@ -95,8 +95,8 @@ class Constant():
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
-        for v in var[1:]:
-            grad = Sum(grad, self.derivative(v))
+        for variable in var[1:]:
+            grad = Sum(grad, self.derivative(variable))
         return grad
 
     def eval(self, **kwargs):
@@ -603,8 +603,8 @@ class LogPoisson(Sum):
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
-        for v in var[1:]:
-            grad = Sum(grad, self.derivative(v))
+        for variable in var[1:]:
+            grad = Sum(grad, self.derivative(variable))
         return LogPoisson(grad, self.symbol_, self.param_k_)
 
     def eval(self, **kwargs):
@@ -757,14 +757,16 @@ class LogLikelohood:
             minimum[x] = Constant(0)
         target = self.log_likelihood_.eval(**tmp_kwargs) - nll_sigma * 2
         for x in minimum:
-            minimum[x] = Constant(true_min[x].value() + np.sqrt(true_min[x].value()) * nll_sigma * 2) # Poisson guess
+            minimum[x] = Constant(true_min[x].value() +\
+                                  np.sqrt(true_min[x].value()) * nll_sigma * 2) # Poisson guess
         in_rate = rate
         rate = Constant(rate)
         for istep in range(iterations):
             for ix,x in enumerate(self.var_):
                 tmp_kwargs = kwargs.copy()
                 tmp_kwargs[x + '_in'] = minimum[x].value()
-                grad[ix] = target - self.log_likelihood_.eval(**tmp_kwargs) + self.nuis_.eval(**tmp_kwargs)
+                grad[ix] = target - self.log_likelihood_.eval(**tmp_kwargs) +\
+                           self.nuis_.eval(**tmp_kwargs)
                 min_val[ix] = self.log_likelihood_.eval(**tmp_kwargs)
                 minimum[x] = Constant(minimum[x]) + grad[ix] * rate
             global_min_val = Constant(0)
@@ -775,14 +777,15 @@ class LogLikelohood:
                 global_grad += g.value()
             if debug:
                 print('min_val', global_min_val, 'target', target)
-                print('istep=', istep, 'minimum=', minimum, 'Delta min_val=', target - global_min_val,
-                    'nll_sigma=', nll_sigma,
+                print('istep=', istep, 'minimum=', minimum,
+                    'Delta min_val=', target - global_min_val, 'nll_sigma=', nll_sigma,
                     'target=', target, 'min_val=', global_min_val,
                     'grad=', global_grad, 'grad*rate==', global_grad*rate,
                     'minimum-grad*rate==', minimum[x]-global_grad*rate)
-                print('diff', target.value() - global_min_val.value(), global_grad.value()-nll_sigma)
+                print('diff', target.value() - global_min_val.value(),
+                      global_grad.value()-nll_sigma)
             if abs(target.value() - global_min_val.value()) < epsilon:
-                minimum = {m: np.sqrt(v.value()) for m,v in minimum.items()}
+                minimum = {key: np.sqrt(val.value()) for key,val in minimum.items()}
                 return minimum
             for x in self.var_:
                 minimum[x] = minimum[x] - global_grad
@@ -792,7 +795,7 @@ class LogLikelohood:
                 rate = max(rate * decay, in_rate*.001)
                 if debug:
                     print('rate after decay', rate, 'decay', decay)
-        minimum = {m: np.sqrt(v.value()) for m,v in minimum.items()}
+        minimum = {key: np.sqrt(val.value()) for key,val in minimum.items()}
         return minimum
 
 
@@ -850,12 +853,13 @@ class LogLogNormal(LogNormal):
         self.log_normal_ = log_norm
 
     def derivative(self, var):
-        return DerivativeLogNormal(self.log_normal_.derivative(var), self.symbol_, self.mu_, self.sigma_)
+        return DerivativeLogNormal(self.log_normal_.derivative(var),
+                   self.symbol_, self.mu_, self.sigma_)
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
-        for v in var[1:]:
-            grad = Sum(grad, self.derivative(v))
+        for variable in var[1:]:
+            grad = Sum(grad, self.derivative(variable))
         grad = DerivativeLogNormal(grad, self.var_, self.mu_, self.sigma_)
         return grad
 
@@ -871,8 +875,8 @@ class DerivativeLogNormal(LogNormal):
 
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
-        for v in var[1:]:
-            grad = Sum(grad, self.derivative(v))
+        for variable in var[1:]:
+            grad = Sum(grad, self.derivative(variable))
         grad = DerivativeLogNormal(grad, self.var_, self.mu_, self.sigma_)
         return grad
 
