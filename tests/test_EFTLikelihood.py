@@ -15,6 +15,8 @@ def test_Constant():
     assert type(const_test/const_test)==Constant
     assert ((const_test*const_test + const_test).eval().value() - 6)<1e-18
     assert ((const_test*const_test + const_test).ln().eval().value() - np.log(6))<1e-18
+    assert(Pi().eval() - np.math.pi)<1e-18
+    assert(LogPi().eval() - np.log(np.math.pi))<1e-18
 
 def test_Variable():
     var_test = Variable('x')
@@ -144,3 +146,5 @@ def test_LogNormal():
     print('  ' + str(log_normal_test.ln().derivative('u')))
     print('    f\'(ln(sigma)): ', end='')
     print('  ' + str(log_normal_test.ln().derivative('s')))
+    assert (log_normal_test.eval(x_in=100, u_in=100, s_in=1.05) - 0.0817669) < 1e-7
+    assert (log_normal_test.ln().eval(x_in=100, u_in=100, s_in=1.05) - -2.50388) < 1e-5
