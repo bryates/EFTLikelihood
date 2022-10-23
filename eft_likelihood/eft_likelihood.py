@@ -467,6 +467,7 @@ class LogVariable(Variable):
             if self.symbol_ + '_in' not in kwargs:
                 raise Exception(f'please provide {self.symbol_}!')
             x_in = Constant(kwargs[self.symbol_ + '_in']).value()
+            print('ln of', self.symbol_, x_in, np.log(x_in))
             return Constant(np.log(x_in))
         return Constant(np.log(self.symbol_.eval(**kwargs).value()))
 
@@ -833,7 +834,7 @@ class LogLikelohood:
 
 
 class LogNormal(Variable):
-    def __init__(self, var='x', mu='u', kappa='kappa', mu_in=np.exp(1), kappa_in=1):
+    def __init__(self, var='k', mu='u', kappa='kappa', mu_in=np.exp(1), kappa_in=1):
         self.symbol_ = var
         self.var_ = LogVariable(var)
         self.mu_ = mu
