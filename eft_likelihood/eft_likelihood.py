@@ -97,6 +97,7 @@ class Constant():
         grad = self.derivative(var[0])
         for variable in var[1:]:
             grad = Sum(grad, self.derivative(variable))
+        return {variable: self.derivative(variable) for variable in var}
         return grad
 
     def eval(self, **kwargs):
@@ -624,6 +625,7 @@ class LogPoisson(Sum):
         grad = self.derivative(var[0])
         for variable in var[1:]:
             grad = Sum(grad, self.derivative(variable))
+        return {variable: LogPoisson(self.derivative(variable), self.symbol_, self.param_k_) for variable in var}
         return LogPoisson(grad, self.symbol_, self.param_k_)
 
     def eval(self, **kwargs):
@@ -706,13 +708,13 @@ class LogLikelohood:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1,\
                                answer WILL be wrong')
             hess_matrix = {}
-            for x in self.var_:
-                hess = derivative.gradient(x)
+            for x in self.var_ + self.nuis_var_:
+                hess = derivative[x].derivative(x)
                 hess_matrix[x] = Constant(1/np.sqrt(-1 * hess.eval(**data).value()))
             hess_matrix['kappa'] = self.nuis_.best_kappa_.value()
             return hess_matrix
 
-        derivative = self.log_likelihood_.gradient(self.var_)
+        derivative = self.log_likelihood_.gradient(self.var_ + self.nuis_var_)
         d_nuis = self.nuis_.gradient(self.var_ + self.nuis_var_)
         grad = [Constant(0)] * len(self.var_ + self.nuis_var_)
         minimum = {x.replace('_in', ''): Constant(kwargs[x]) for x in kwargs if '_in' in x}
@@ -724,26 +726,27 @@ class LogLikelohood:
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 tmp_kwargs[x + '_in'] = minimum[x].value()
                 tmp_kwargs['symbol'] = var
-                grad[ix] = derivative.eval(**tmp_kwargs) + d_nuis.eval(**tmp_kwargs)
-                min_val[ix] = derivative.eval(**tmp_kwargs)
+            for ix,x in enumerate(self.var_ + self.nuis_var_):
+                grad[ix] = derivative[x].eval(**tmp_kwargs) + d_nuis[x].eval(**tmp_kwargs)
+                min_val[ix] = derivative[x].eval(**tmp_kwargs)
                 minimum[x] = minimum[x] + grad[ix] * rate
                 if isinstance(self.nuis_, Variable):
                     d_nuis.update(**{x: grad[ix] * rate})
-                    #self.nuis_.update(**{x: grad[ix] * rate})
+                    self.nuis_.update(**{x: grad[ix] * rate})
             global_min_val = Constant(0)
             global_grad = Constant(0)
-            #for g in min_val:
-            #    global_min_val += g.value()
+            for g in min_val:
+                global_min_val += g.value()
             tmp_kwargs = kwargs.copy()
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 tmp_kwargs[x + '_in'] = minimum[x]
-            global_min_val = derivative.eval(**tmp_kwargs)
+            #global_min_val = derivative.eval(**tmp_kwargs)
             for g in grad:
                 global_grad += g.value()
             if debug:
-                print('istep=', istep, 'minimum=', minimum[x], 'min_val=', global_min_val,
-                    'grad=', global_grad, 'grad*rate==', global_grad*rate,
-                    'minimum-grad*rate==', minimum[x]-global_grad*rate)
+                print('istep=', istep, 'minimum=', {x: Constant(minimum[x]).value() for x in minimum}, 'min_val=', global_min_val,
+                    'grad=', [x.value()*rate.value() for x in grad], 'grad*rate==', [x.value()*rate.value() for x in grad])#,
+                    #'minimum-grad*rate==', {x: Constant(minimum[x]).value() - Constant(grad[ix]).value()*rate.value() for ix,x in enumerate(minimum)})
             if abs(global_min_val.value()) < epsilon or abs(global_grad.value()) < epsilon:
                 if not doError:
                     return minimum
@@ -792,6 +795,7 @@ class LogLikelohood:
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 tmp_kwargs = kwargs.copy()
                 tmp_kwargs[x + '_in'] = minimum[x].value()
+            for ix,x in enumerate(self.var_ + self.nuis_var_):
                 grad[ix] = target - self.log_likelihood_.eval(**tmp_kwargs) +\
                            self.nuis_.eval(**tmp_kwargs)
                 min_val[ix] = self.log_likelihood_.eval(**tmp_kwargs)
@@ -803,6 +807,8 @@ class LogLikelohood:
             for g in grad:
                 global_grad += g.value()
             if debug:
+                print('istep=', istep, 'minimum=', {x: Constant(minimum[x]).value() for x in minimum}, 'min_val=', global_min_val,
+                    'grad=', [x.value()*rate.value() for x in grad], 'grad*rate==', [x.value()*rate.value() for x in grad])#,
                 print('min_val', global_min_val, 'target', target)
                 print('istep=', istep, 'minimum=', minimum,
                     'Delta min_val=', target - global_min_val, 'nll_sigma=', nll_sigma,
@@ -856,6 +862,14 @@ class LogNormal(Variable):
         return DerivativeLogNormal(self.log_normal_.derivative(var), self.symbol_,
                                    self.mu_, self.kappa_)
 
+    def gradient(self, var=[]):
+        grad = self.derivative(var[0])
+        for variable in var[1:]:
+            grad = Sum(grad, self.derivative(variable))
+        grad = DerivativeLogNormal(grad, self.symbol_, self.mu_, self.kappa_)
+        return {variable: DerivativeLogNormal(self.derivative(variable), self.symbol_, self.mu_, self.kappa_) for variable in var}
+        return grad
+
     def eval(self, **kwargs):
         if self.symbol_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
@@ -901,12 +915,14 @@ class LogLogNormal(LogNormal):
         return DerivativeLogNormal(self.log_normal_.derivative(var),
                    self.symbol_, self.mu_, self.kappa_)
 
+    '''
     def gradient(self, var=[]):
         grad = self.derivative(var[0])
         for variable in var[1:]:
             grad = Sum(grad, self.derivative(variable))
         grad = DerivativeLogNormal(grad, self.symbol_, self.mu_, self.kappa_)
         return grad
+    '''
 
 
 class DerivativeLogNormal(LogNormal):
@@ -917,13 +933,6 @@ class DerivativeLogNormal(LogNormal):
 
     def eval(self, **kwargs):
         return self.log_normal_.eval(**kwargs)
-
-    def gradient(self, var=[]):
-        grad = self.derivative(var[0])
-        for variable in var[1:]:
-            grad = Sum(grad, self.derivative(variable))
-        grad = DerivativeLogNormal(grad, self.symbol_, self.mu_, self.kappa_)
-        return grad
 
 
 if __name__ == '__main__':
