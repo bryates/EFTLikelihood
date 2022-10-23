@@ -82,7 +82,7 @@ class Constant():
             rhs = Constant(rhs)
         return np.abs(self.value()) < rhs.value()
 
-    def set_param(self, k_in=None):
+    def set_param(self, data_in=None):
         return self
 
     def ln(self):
@@ -137,7 +137,7 @@ class Log(Constant):
         if not issubclass(type(self.value()), Constant):
             return Constant(np.log(self.value()))
         if 'x_in' not in kwargs:
-            raise Exception(f'Please provide k_in!')
+            raise Exception(f'Please provide data_in!')
         return Constant(np.log(self.value().eval(**kwargs).value()))
 
 
@@ -151,8 +151,8 @@ class Parameter(Constant):
     def __str__(self):
         return self.param_
 
-    def set_param(self, k_in):
-        return Constant(k_in)
+    def set_param(self, data_in):
+        return Constant(data_in)
 
     def ln(self):
         return LogParameter(self.param_)
@@ -168,31 +168,31 @@ class LogParameter(Parameter):
     def __str__(self):
         return 'ln(' + str(self.param_) + ')'
 
-    def set_param(self, k_in):
-        return Constant(np.log(k_in))
+    def set_param(self, data_in):
+        return Constant(np.log(data_in))
 
     def eval(self, **kwargs):
-        if 'k_in' not in kwargs:
+        if 'data_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        k_in = kwargs['k_in']
-        return Constant(np.log(np.math.factorial(k_in)))
+        data_in = kwargs['data_in']
+        return Constant(np.log(np.math.factorial(data_in)))
 
 
 class Factorial(Parameter):
     def __str__(self):
         return self.param_ + '!'
 
-    def set_param(self, k_in):
-        return Constant(np.math.factorial(k_in))
+    def set_param(self, data_in):
+        return Constant(np.math.factorial(data_in))
 
     def ln(self):
         return LogFactorial(self.param_)
 
     def eval(self, **kwargs):
-        if 'k_in' not in kwargs:
+        if 'data_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        k_in = kwargs['k_in']
-        return Constant(np.math.factorial(k_in))
+        data_in = kwargs['data_in']
+        return Constant(np.math.factorial(data_in))
 
 
 class LogFactorial(Factorial):
@@ -202,14 +202,14 @@ class LogFactorial(Factorial):
     def __str__(self):
         return 'ln(' + str(self.param_) + '!)'
 
-    def set_param(self, k_in):
-        return Constant(np.log(float(np.math.factorial(k_in))))
+    def set_param(self, data_in):
+        return Constant(np.log(float(np.math.factorial(data_in))))
 
     def eval(self, **kwargs):
-        if 'k_in' not in kwargs:
+        if 'data_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        k_in = kwargs['k_in']
-        return Constant(np.log(float(np.math.factorial(k_in))))
+        data_in = kwargs['data_in']
+        return Constant(np.log(float(np.math.factorial(data_in))))
 
 
 class Sum(Constant):
@@ -229,8 +229,8 @@ class Sum(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' + ' + str(self.rhs_) + ')'
 
-    def set_param(self, k_in):
-        return Sum(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
+    def set_param(self, data_in):
+        return Sum(self.lhs_.set_param(data_in), self.rhs_.set_param(data_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -273,8 +273,8 @@ class Diff(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' - ' + str(self.rhs_) + ')'
 
-    def set_param(self, k_in):
-        return Diff(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
+    def set_param(self, data_in):
+        return Diff(self.lhs_.set_param(data_in), self.rhs_.set_param(data_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -315,8 +315,8 @@ class Prod(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' * ' + str(self.rhs_) + ')'
 
-    def set_param(self, k_in):
-        return Prod(self.lhs_.set_param(k_in).simplify(), self.rhs_.set_param(k_in).simplify())
+    def set_param(self, data_in):
+        return Prod(self.lhs_.set_param(data_in).simplify(), self.rhs_.set_param(data_in).simplify())
 
     def simplify(self):
         if self.lhs_.value() == 0 or self.rhs_.value() == 0:
@@ -373,8 +373,8 @@ class Quotient(Constant):
     def __str__(self):
         return '(' + str(self.lhs_) + ' / ' + str(self.rhs_) + ')'
 
-    def set_param(self, k_in):
-        return Quotient(self.lhs_.set_param(k_in), self.rhs_.set_param(k_in))
+    def set_param(self, data_in):
+        return Quotient(self.lhs_.set_param(data_in), self.rhs_.set_param(data_in))
 
     def simplify(self):
         if self.lhs_ == self.rhs_:
@@ -500,8 +500,8 @@ class Power(Variable):
             return Variable(self.symbol_)
         return self
 
-    def set_param(self, k_in):
-        return Power(self.symbol_.set_param(k_in), self.val_.set_param(k_in))
+    def set_param(self, data_in):
+        return Power(self.symbol_.set_param(data_in), self.val_.set_param(data_in))
 
     def raise_power_by_one(self):
         return Power(self.symbol_, self.val_+1)
@@ -584,7 +584,7 @@ class Expo(Constant):
 
 
 class Poisson(Prod):
-    def __init__(self, symbol='x', param=1):
+    def __init__(self, symbol='x', param='data'):
         self.symbol_ = symbol
         self.var_ = Prod(Constant(-1), Variable(self.symbol_))
         self.lhs_ = Power(symbol, Parameter(param))
@@ -604,19 +604,19 @@ class Poisson(Prod):
         var = Prod(Constant(-1), Variable(self.var_))
         if self.param_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_}!')
-        k_in = kwargs[self.param_ + '_in']
+        data_in = kwargs[self.param_ + '_in']
         x_in = kwargs[self.symbol_ + '_in']
-        lhs = Power(self.symbol_, Constant(k_in)).eval(**kwargs)
-        rhs = Expo(self.var_).eval(**kwargs) / Factorial(k_in).eval(k_in=k_in)
+        lhs = Power(self.symbol_, Constant(data_in)).eval(**kwargs)
+        rhs = Expo(self.var_).eval(**kwargs) / Factorial(data_in).eval(data_in=data_in)
         return Constant(lhs * rhs)
 
 
 class LogPoisson(Sum):
-    def __init__(self, Pois_l, symbol, k_in):
+    def __init__(self, Pois_l, symbol, data_in):
         self.symbol_ = symbol
         self.lhs_ = Pois_l.lhs_
         self.rhs_ = Pois_l.rhs_
-        self.param_k_ = k_in
+        self.param_k_ = data_in
 
     def derivative(self, var='x'):
         return DerivativePoisson(Sum(self.lhs_.derivative(var),
@@ -635,18 +635,18 @@ class LogPoisson(Sum):
         x_in = kwargs['x_in']
         if self.param_k_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_k_}!')
-        k_in = kwargs[self.param_k_ + '_in']
-        lhs_ = self.lhs_.set_param(k_in)
-        rhs_ = self.rhs_.set_param(k_in)
+        data_in = kwargs[self.param_k_ + '_in']
+        lhs_ = self.lhs_.set_param(data_in)
+        rhs_ = self.rhs_.set_param(data_in)
         return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
 class DerivativePoisson(Sum):
-    def __init__(self, Pois_d, symbol, k_in):
+    def __init__(self, Pois_d, symbol, data_in):
         self.symbol_ = symbol
         self.lhs_ = Pois_d.lhs_
         self.rhs_ = Pois_d.rhs_
-        self.param_k_ = k_in
+        self.param_k_ = data_in
 
     def derivative(self, var):
         return DerivativePoisson(Sum(self.lhs_.derivative(var), self.rhs_.derivative(var)),
@@ -658,14 +658,14 @@ class DerivativePoisson(Sum):
         x_in = kwargs[self.symbol_ + '_in']
         if self.param_k_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_k_}!')
-        k_in = kwargs[self.param_k_ + '_in']
-        lhs_ = self.lhs_.set_param(k_in)
-        rhs_ = self.rhs_.set_param(k_in)
+        data_in = kwargs[self.param_k_ + '_in']
+        lhs_ = self.lhs_.set_param(data_in)
+        rhs_ = self.rhs_.set_param(data_in)
         return Constant(lhs_.eval(x_in=x_in) + rhs_.eval(x_in=x_in))
 
 
 class EFTPoisson(Poisson):
-    def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param=1):
+    def __init__(self, poly=Polynomial(symbol='x', const=[1, 1, 1], order=2), param='data'):
         self.symbol_ = poly.symbol_
         self.param_ = param
         self.var_ = poly
@@ -678,10 +678,10 @@ class EFTPoisson(Poisson):
         x_in = kwargs[self.symbol_ + '_in']
         if self.param_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.param_}!')
-        k_in = kwargs[self.param_ + '_in']
+        data_in = kwargs[self.param_ + '_in']
         var = self.var_.eval(x_in=x_in)
-        lhs = Power(var, Constant(k_in)).eval(x_in=x_in)
-        rhs = Expo(Prod(Constant(-1), var)).eval(x_in=x_in) / Factorial(k_in).eval(k_in=k_in)
+        lhs = Power(var, Constant(data_in)).eval(x_in=x_in)
+        rhs = Expo(Prod(Constant(-1), var)).eval(x_in=x_in) / Factorial(data_in).eval(data_in=data_in)
         return Constant(lhs * rhs)
 
 
@@ -704,7 +704,7 @@ class LogLikelohood:
 
         def hessian(derivative, var, minimum, **data):
             tmp_kwargs = self.var_.copy()
-            tmp_kwargs.append('k')
+            tmp_kwargs.append('data')
             if (nll_sigma - 0.5) > 1e-18:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1,\
                                answer WILL be wrong')
@@ -820,6 +820,7 @@ class LogLikelohood:
                       global_grad.value()-nll_sigma)
             if abs(target.value() - global_min_val.value()) < epsilon:
                 minimum = {key: np.sqrt(val.value()) for key,val in minimum.items()}
+                self.nuis_.update_error(**minimum)
                 return minimum
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 minimum[x] = minimum[x] - grad[ix]
@@ -830,11 +831,15 @@ class LogLikelohood:
                 if debug:
                     print('rate after decay', rate, 'decay', decay)
         minimum = {key: np.sqrt(val.value()) for key,val in minimum.items()}
+        self.nuis_.update_error(**minimum)
         return minimum
+
+    def pull(self):
+        return self.nuis_.pull()
 
 
 class LogNormal(Variable):
-    def __init__(self, var='k', mu='u', kappa='kappa', mu_in=np.exp(1), kappa_in=1):
+    def __init__(self, var='data', mu='u', kappa='kappa', mu_in=np.exp(1), kappa_in=1):
         self.symbol_ = var
         self.var_ = LogVariable(var)
         self.mu_ = mu
@@ -850,8 +855,12 @@ class LogNormal(Variable):
                             Power(Prod(Constant(2), Pi()), Constant(1/2))))
         self.initial_mu_ = Constant(mu_in)
         self.initial_kappa_ = Constant(kappa_in)
+        self.initial_mu_err_ = Constant(1)
+        self.initial_kappa_err_ = Constant(1)
         self.best_mu_ = Constant(mu_in)
         self.best_kappa_ = Constant(kappa_in)
+        self.best_mu_err_ = Constant(1)
+        self.best_kappa_err_ = Constant(1)
 
     def __str__(self):
         return str(self.log_normal_)
@@ -902,6 +911,17 @@ class LogNormal(Variable):
         if 'mu' in kwargs:
             mu_in = kwargs['mu']
             self.best_mu_ += mu_in
+
+    def update_error(self, **kwargs):
+        if 'kappa_err' in kwargs:
+            kappa_err_in = kwargs['kappa_err']
+            self.best_kappa_err_ = kappa_err_in
+        if 'mu_err' in kwargs:
+            mu_err_in = kwargs['mu_err']
+            self.best_mu_err_ = mu_err_in
+
+    def pull(self):
+        return {self.kappa_ : {'central' : self.best_kappa_.value() - self.initial_kappa_.value(), 'pull' : self.best_kappa_err_.value() / self.initial_kappa_err_.value()}}
         
 
 class LogLogNormal(LogNormal):
