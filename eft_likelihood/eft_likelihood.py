@@ -291,6 +291,9 @@ class Diff(Constant):
             return Constant(lhs.value() - rhs.value())
         return Diff(lhs, rhs)
 
+    def ln(self):
+        return LogVariable(self.value())
+
     def derivative(self, var='x'):
         return Diff(self.lhs_.derivative(var), self.rhs_.derivative(var))
 
@@ -458,6 +461,8 @@ class LogVariable(Variable):
         return LogVariable(self)
 
     def derivative(self, var='x'):
+        if issubclass(type(self.symbol_), Constant):
+            return Quotient(self.symbol_.derivative(var), Variable(self.symbol_))
         if var == self.symbol_:
             return Quotient(Constant(1), Variable(self.symbol_))
         return Constant(0)
@@ -467,7 +472,6 @@ class LogVariable(Variable):
             if self.symbol_ + '_in' not in kwargs:
                 raise Exception(f'please provide {self.symbol_}!')
             x_in = Constant(kwargs[self.symbol_ + '_in']).value()
-            print('ln of', self.symbol_, x_in, np.log(x_in))
             return Constant(np.log(x_in))
         return Constant(np.log(self.symbol_.eval(**kwargs).value()))
 
@@ -506,8 +510,11 @@ class Power(Variable):
     def raise_power_by_one(self):
         return Power(self.symbol_, self.val_+1)
 
+    def lower_power_by_one(self):
+        return Power(self.symbol_, self.val_-1)
+
     def ln(self):
-        return self.val_ * self.symbol_.ln()
+        return Prod(self.val_, self.symbol_.ln())
 
     def derivative(self, var='x'):
         if self.val_.value() == 1:
@@ -703,7 +710,7 @@ class LogLikelohood:
                     temperature=None, debug=False, doError=False, doHess=False, **kwargs):
 
         def hessian(derivative, var, minimum, **data):
-            tmp_kwargs = self.var_.copy()
+            tmp_kwargs = (self.var_ + self.nuis_var_).copy()
             tmp_kwargs.append('data')
             if (nll_sigma - 0.5) > 1e-18:
                 warnings.warn('Asked for Hessian at a value other than 2*deltaNLL=1,\
@@ -717,6 +724,7 @@ class LogLikelohood:
 
         derivative = self.log_likelihood_.gradient(self.var_ + self.nuis_var_)
         d_nuis = self.nuis_.gradient(self.var_ + self.nuis_var_)
+        print('d_nuis grad', {x:str(g) for x,g in d_nuis.items()})
         grad = [Constant(0)] * len(self.var_ + self.nuis_var_)
         minimum = {x.replace('_in', ''): Constant(kwargs[x]) for x in kwargs if '_in' in x}
         min_val = [Constant(0) for x in self.var_ + self.nuis_var_]
@@ -727,6 +735,7 @@ class LogLikelohood:
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 tmp_kwargs[x + '_in'] = minimum[x].value()
                 tmp_kwargs['symbol'] = var
+            print('d_nuis grad', tmp_kwargs, {x:[str(g), str(g.eval(**tmp_kwargs))] for x,g in d_nuis.items()})
             for ix,x in enumerate(self.var_ + self.nuis_var_):
                 grad[ix] = derivative[x].eval(**tmp_kwargs) + d_nuis[x].eval(**tmp_kwargs)
                 min_val[ix] = derivative[x].eval(**tmp_kwargs)
@@ -883,7 +892,7 @@ class LogNormal(Variable):
     def eval(self, **kwargs):
         if self.symbol_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.symbol_}!')
-        x_in = kwargs[self.symbol_ + '_in']
+        data_in = kwargs[self.symbol_ + '_in']
         if self.mu_ + '_in' not in kwargs:
             raise Exception(f'Please provide {self.mu_}!')
         mu_in = kwargs[self.mu_ + '_in']
@@ -892,6 +901,7 @@ class LogNormal(Variable):
         kappa_in = kwargs[self.kappa_ + '_in']
         if kappa_in <= 0:
             raise Exception('kappa is negative!')
+        print('Received', data_in, mu_in, kappa_in)
         return self.log_normal_.eval(**kwargs)
 
     def variance(self, **kwargs):
@@ -932,19 +942,6 @@ class LogLogNormal(LogNormal):
         super().__init__(var, mu, kappa)
         self.log_normal_ = log_norm
 
-    def derivative(self, var):
-        return DerivativeLogNormal(self.log_normal_.derivative(var),
-                   self.symbol_, self.mu_, self.kappa_)
-
-    '''
-    def gradient(self, var=[]):
-        grad = self.derivative(var[0])
-        for variable in var[1:]:
-            grad = Sum(grad, self.derivative(variable))
-        grad = DerivativeLogNormal(grad, self.symbol_, self.mu_, self.kappa_)
-        return grad
-    '''
-
 
 class DerivativeLogNormal(LogNormal):
     def __init__(self, log_norm, var, mu, kappa):
@@ -953,6 +950,17 @@ class DerivativeLogNormal(LogNormal):
         self.log_normal_ = log_norm
 
     def eval(self, **kwargs):
+        if self.symbol_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.symbol_}!')
+        data_in = kwargs[self.symbol_ + '_in']
+        if self.mu_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.mu_}!')
+        mu_in = kwargs[self.mu_ + '_in']
+        if self.kappa_ + '_in' not in kwargs:
+            raise Exception(f'Please provide {self.kappa_}!')
+        kappa_in = kwargs[self.kappa_ + '_in']
+        if kappa_in <= 0:
+            raise Exception('kappa is negative!')
         return self.log_normal_.eval(**kwargs)
 
 
