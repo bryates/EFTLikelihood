@@ -949,20 +949,6 @@ class DerivativeLogNormal(LogNormal):
         self.symbol_ = var
         self.log_normal_ = log_norm
 
-    def eval(self, **kwargs):
-        if self.symbol_ + '_in' not in kwargs:
-            raise Exception(f'Please provide {self.symbol_}!')
-        data_in = kwargs[self.symbol_ + '_in']
-        if self.mu_ + '_in' not in kwargs:
-            raise Exception(f'Please provide {self.mu_}!')
-        mu_in = kwargs[self.mu_ + '_in']
-        if self.kappa_ + '_in' not in kwargs:
-            raise Exception(f'Please provide {self.kappa_}!')
-        kappa_in = kwargs[self.kappa_ + '_in']
-        if kappa_in <= 0:
-            raise Exception('kappa is negative!')
-        return self.log_normal_.eval(**kwargs)
-
 
 if __name__ == '__main__':
     pass
